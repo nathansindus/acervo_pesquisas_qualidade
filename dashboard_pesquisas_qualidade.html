@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de Qualidade</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0d1b3e; color: #e0e8ff; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+  
+  header { padding: 28px 40px 16px; border-bottom: 1px solid #1e3060; display: flex; align-items: center; gap: 16px; }
+  header .logo { width: 44px; height: 44px; background: #00e5c0; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; color: #0d1b3e; }
+  header h1 { font-size: 22px; font-weight: 700; color: #00e5c0; letter-spacing: 0.5px; }
+  header p { font-size: 13px; color: #7a9cc4; margin-top: 2px; }
+
+  .container { padding: 28px 40px; }
+
+  /* FILTER */
+  .filter-bar { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+  .filter-label { font-size: 13px; color: #7a9cc4; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; }
+  .custom-select-wrapper { position: relative; min-width: 260px; }
+  .custom-select-btn { background: #112347; border: 1.5px solid #1e3a6e; border-radius: 10px; padding: 10px 16px; font-size: 14px; color: #e0e8ff; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: border-color 0.2s; }
+  .custom-select-btn:hover, .custom-select-btn.open { border-color: #00e5c0; }
+  .custom-select-btn .arrow { width: 10px; height: 10px; border-right: 2px solid #00e5c0; border-bottom: 2px solid #00e5c0; transform: rotate(45deg); transition: transform 0.2s; margin-top: -4px; }
+  .custom-select-btn.open .arrow { transform: rotate(-135deg); margin-top: 2px; }
+  .custom-select-dropdown { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: #112347; border: 1.5px solid #1e3a6e; border-radius: 10px; z-index: 100; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.4); display: none; }
+  .custom-select-dropdown.open { display: block; }
+  .custom-select-option { padding: 10px 16px; font-size: 14px; cursor: pointer; transition: background 0.15s; }
+  .custom-select-option:hover { background: #1a3060; }
+  .custom-select-option.selected { color: #00e5c0; font-weight: 600; }
+
+  /* KPIs */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .kpi-card { background: #112347; border-radius: 14px; padding: 20px 22px; border: 1px solid #1e3a6e; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,229,192,0.08); }
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #00e5c0, #0099ff); }
+  .kpi-icon { font-size: 22px; margin-bottom: 10px; }
+  .kpi-value { font-size: 32px; font-weight: 800; color: #00e5c0; line-height: 1; }
+  .kpi-label { font-size: 12px; color: #7a9cc4; margin-top: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
+
+  /* MAIN LAYOUT */
+  .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+
+  /* COURSE LIST */
+  .panel { background: #112347; border-radius: 14px; border: 1px solid #1e3a6e; overflow: hidden; }
+  .panel-header { padding: 18px 22px; border-bottom: 1px solid #1e3a6e; display: flex; align-items: center; justify-content: space-between; }
+  .panel-title { font-size: 15px; font-weight: 700; color: #00e5c0; display: flex; align-items: center; gap: 8px; }
+  .panel-count { background: #1e3a6e; border-radius: 20px; padding: 2px 10px; font-size: 12px; color: #7a9cc4; }
+
+  .course-list { max-height: 520px; overflow-y: auto; }
+  .course-list::-webkit-scrollbar { width: 4px; }
+  .course-list::-webkit-scrollbar-track { background: #0d1b3e; }
+  .course-list::-webkit-scrollbar-thumb { background: #1e3a6e; border-radius: 4px; }
+
+  .course-item { padding: 16px 22px; border-bottom: 1px solid #0d1b3e; cursor: pointer; transition: background 0.15s; position: relative; }
+  .course-item:hover { background: #162a50; }
+  .course-item.active { background: #162a50; border-left: 3px solid #00e5c0; }
+  .course-item:last-child { border-bottom: none; }
+  .course-name { font-size: 14px; font-weight: 600; color: #e0e8ff; margin-bottom: 8px; line-height: 1.4; }
+  .course-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .course-tag { background: #1e3a6e; border-radius: 6px; padding: 2px 8px; font-size: 11px; color: #7a9cc4; }
+  .course-tag.online { background: #0a2a1e; color: #00e5c0; }
+  .nps-bar-wrap { display: flex; align-items: center; gap: 10px; }
+  .nps-bar-bg { flex: 1; height: 7px; background: #1e3a6e; border-radius: 4px; overflow: hidden; }
+  .nps-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .nps-value { font-size: 13px; font-weight: 700; min-width: 36px; text-align: right; }
+
+  /* DETAIL PANEL */
+  .detail-panel { display: flex; flex-direction: column; gap: 0; }
+  .detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: #3a5080; gap: 12px; }
+  .detail-empty .icon { font-size: 48px; opacity: 0.4; }
+
+  .speaker-list { padding: 0; }
+  .speaker-item { padding: 16px 22px; border-bottom: 1px solid #0d1b3e; display: flex; align-items: center; gap: 14px; }
+  .speaker-item:last-child { border-bottom: none; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; color: #0d1b3e; flex-shrink: 0; }
+  .speaker-info { flex: 1; }
+  .speaker-name { font-size: 14px; font-weight: 700; color: #e0e8ff; }
+  .speaker-evals { font-size: 12px; color: #7a9cc4; margin-top: 2px; }
+  .speaker-nps { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .speaker-nps-val { font-size: 20px; font-weight: 800; }
+  .speaker-nps-label { font-size: 10px; color: #7a9cc4; text-transform: uppercase; letter-spacing: 0.5px; }
+  .speaker-nota { font-size: 12px; color: #7a9cc4; }
+
+  /* COMMENTS */
+  .comments-section { padding: 0 22px 22px; max-height: 320px; overflow-y: auto; }
+  .comments-section::-webkit-scrollbar { width: 4px; }
+  .comments-section::-webkit-scrollbar-track { background: #0d1b3e; }
+  .comments-section::-webkit-scrollbar-thumb { background: #1e3a6e; border-radius: 4px; }
+  .comment-card { background: #0d1b3e; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; border-left: 3px solid #00e5c0; }
+  .comment-text { font-size: 13px; color: #b0c4de; line-height: 1.6; }
+  .comment-meta { font-size: 11px; color: #3a5080; margin-top: 6px; }
+
+  .comments-title { font-size: 13px; font-weight: 700; color: #00e5c0; text-transform: uppercase; letter-spacing: 0.6px; padding: 16px 22px 10px; border-top: 1px solid #1e3a6e; }
+
+  /* NPS color utility */
+  .nps-excellent { color: #00e5c0; }
+  .nps-good { color: #4caf50; }
+  .nps-neutral { color: #ff9800; }
+  .nps-bad { color: #f44336; }
+
+  .badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; padding: 3px 9px; font-size: 11px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Q</div>
+  <div>
+    <h1>Dashboard de Qualidade</h1>
+    <p>Pesquisas de avaliação de eventos e treinamentos</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- FILTER -->
+  <div class="filter-bar">
+    <span class="filter-label">Filtrar por Área:</span>
+    <div class="custom-select-wrapper" id="selectWrapper">
+      <div class="custom-select-btn" id="selectBtn">
+        <span id="selectText">Todas as áreas</span>
+        <span class="arrow"></span>
+      </div>
+      <div class="custom-select-dropdown" id="selectDropdown"></div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- MAIN -->
+  <div class="main-grid">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">📋 Cursos & Eventos</span>
+        <span class="panel-count" id="courseCount">0 eventos</span>
+      </div>
+      <div class="course-list" id="courseList"></div>
+    </div>
+
+    <div class="panel detail-panel" id="detailPanel">
+      <div class="panel-header">
+        <span class="panel-title">👤 Palestrantes & Comentários</span>
+      </div>
+      <div id="detailContent">
+        <div class="detail-empty">
+          <div class="icon">🎯</div>
+          <div>Selecione um evento para ver detalhes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const rawEvents = [{"ID_Evento":26758,"Data_Evento":46042,"Curso":"Evento de Pré-Lançamento da Comunidade VORA","Area_Responsavel":"Acesso e Precificação","Modalidade":"Online","Inscritos":152,"Confirmados":71,"Avaliacoes":34,"Taxa_Resposta":0.4789,"Nota_Media_Geral":9.5882,"NPS_Geral":91},{"ID_Evento":26758,"Data_Evento":46042,"Curso":"Evento de Pré-Lançamento da Comunidade VORA","Area_Responsavel":"Acesso e Precificação","Modalidade":"Online","Inscritos":152,"Confirmados":71,"Avaliacoes":34,"Taxa_Resposta":0.4789,"Nota_Media_Geral":9.5882,"NPS_Geral":91}];
+
+const rawSpeakers = [{"ID_Avaliacao_Palestrante":"26758-PAL-1","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Marcela Amaral Pontes","Avaliacoes":33,"Nota_Media":9.7879,"NPS":97},{"ID_Avaliacao_Palestrante":"26758-PAL-2","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Michel Conte","Avaliacoes":33,"Nota_Media":9.6364,"NPS":94},{"ID_Avaliacao_Palestrante":"26758-PAL-3","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Daniel Poiano","Avaliacoes":33,"Nota_Media":9.5455,"NPS":91},{"ID_Avaliacao_Palestrante":"26758-PAL-4","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Lorice Scalise","Avaliacoes":33,"Nota_Media":9.8182,"NPS":97},{"ID_Avaliacao_Palestrante":"26758-PAL-5","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Gabriela Tannus","Avaliacoes":33,"Nota_Media":9.5758,"NPS":88},{"ID_Avaliacao_Palestrante":"26758-PAL-1","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Marcela Amaral Pontes","Avaliacoes":33,"Nota_Media":9.7879,"NPS":97},{"ID_Avaliacao_Palestrante":"26758-PAL-2","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Michel Conte","Avaliacoes":33,"Nota_Media":9.6364,"NPS":94},{"ID_Avaliacao_Palestrante":"26758-PAL-3","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Daniel Poiano","Avaliacoes":33,"Nota_Media":9.5455,"NPS":91},{"ID_Avaliacao_Palestrante":"26758-PAL-4","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Lorice Scalise","Avaliacoes":33,"Nota_Media":9.8182,"NPS":97},{"ID_Avaliacao_Palestrante":"26758-PAL-5","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Gabriela Tannus","Avaliacoes":33,"Nota_Media":9.5758,"NPS":88}];
+
+const rawComments = [{"ID_Comentario":"26758-COM-1","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Evento ótimo.","Participacao":"Online"},{"ID_Comentario":"26758-COM-2","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"A formação da comunidade e formato proposto é bastante interessante, pois promove o debate, troca de ideias e estimula a participação. Aqui a discussão pode ser mais aprofundada  com profissionais que já atuam em acesso, porém estão inseridos em um cenário dinâmico e de diferentes culturas empresariais e   níveis distintos de maturidade  do trabalho de acesso ao mercado.","Participacao":"Online"},{"ID_Comentario":"26758-COM-3","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"ótimo evento","Participacao":"Online"},{"ID_Comentario":"26758-COM-4","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"parabéns pela palestra. Muito esclarecedora","Participacao":"Online"},{"ID_Comentario":"26758-COM-5","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Adorei a condução do evento, gostaria de mais oportunidades de participação online, são eventos que agregam muito valor.","Participacao":"Online"},{"ID_Comentario":"26758-COM-6","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Ótima iniciativa, Parabéns! Ansioso para receber o guia "A Função de Acesso e a Alta Performance na Nova Era do Valor em Saúde" apresentado durante o evento e demais frutos advindos da comunidade.","Participacao":"Online"},{"ID_Comentario":"26758-COM-7","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Excelente oportunidade de reunirmos profissionais que podem mudar o rumo do acesso no Brasil. Parabens pela iniciativa.","Participacao":"Online"},{"ID_Comentario":"26758-COM-8","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Excelente iniciativa. Parabéns aos idealizadores","Participacao":"Online"},{"ID_Comentario":"26758-COM-1","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Evento ótimo.","Participacao":"Online"},{"ID_Comentario":"26758-COM-2","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"A formação da comunidade e formato proposto é bastante interessante, pois promove o debate, troca de ideias e estimula a participação. Aqui a discussão pode ser mais aprofundada  com profissionais que já atuam em acesso, porém estão inseridos em um cenário dinâmico e de diferentes culturas empresariais e   níveis distintos de maturidade  do trabalho de acesso ao mercado.","Participacao":"Online"},{"ID_Comentario":"26758-COM-3","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"ótimo evento","Participacao":"Online"},{"ID_Comentario":"26758-COM-4","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"parabéns pela palestra. Muito esclarecedora","Participacao":"Online"},{"ID_Comentario":"26758-COM-5","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Adorei a condução do evento, gostaria de mais oportunidades de participação online, são eventos que agregam muito valor.","Participacao":"Online"},{"ID_Comentario":"26758-COM-6","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Ótima iniciativa, Parabéns! Ansioso para receber o guia "A Função de Acesso e a Alta Performance na Nova Era do Valor em Saúde" apresentado durante o evento e demais frutos advindos da comunidade.","Participacao":"Online"},{"ID_Comentario":"26758-COM-7","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Excelente oportunidade de reunirmos profissionais que podem mudar o rumo do acesso no Brasil. Parabens pela iniciativa.","Participacao":"Online"},{"ID_Comentario":"26758-COM-8","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Excelente iniciativa. Parabéns aos idealizadores","Participacao":"Online"}];
+
+// Deduplicate
+function deduplicateEvents(arr) {
+  const seen = new Set();
+  return arr.filter(e => {
+    const key = e.ID_Evento + '-' + e.Curso;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+function deduplicateSpeakers(arr) {
+  const seen = new Set();
+  return arr.filter(e => {
+    if (seen.has(e.ID_Avaliacao_Palestrante)) return false;
+    seen.add(e.ID_Avaliacao_Palestrante);
+    return true;
+  });
+}
+function deduplicateComments(arr) {
+  const seen = new Set();
+  return arr.filter(e => {
+    const key = e.ID_Comentario + '-' + e.ID_Evento;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+const events = deduplicateEvents(rawEvents);
+const speakers = deduplicateSpeakers(rawSpeakers);
+const comments = deduplicateComments(rawComments);
+
+let selectedArea = 'all';
+let selectedEventId = null;
+let selectedEventCurso = null;
+
+// Avatar colors
+const avatarColors = ['#00e5c0','#0099ff','#a855f7','#f59e0b','#ec4899','#10b981','#3b82f6','#f97316'];
+function getAvatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return avatarColors[Math.abs(hash) % avatarColors.length];
+}
+function getInitials(name) {
+  return name.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
+}
+
+function getNPSColor(nps) {
+  if (nps >= 90) return '#00e5c0';
+  if (nps >= 70) return '#4caf50';
+  if (nps >= 50) return '#ff9800';
+  return '#f44336';
+}
+function getNPSClass(nps) {
+  if (nps >= 90) return 'nps-excellent';
+  if (nps >= 70) return 'nps-good';
+  if (nps >= 50) return 'nps-neutral';
+  return 'nps-bad';
+}
+
+function getAreas() {
+  const areas = ['all', ...new Set(events.map(e => e.Area_Responsavel))];
+  return areas;
+}
+
+function getFilteredEvents() {
+  if (selectedArea === 'all') return events;
+  return events.filter(e => e.Area_Responsavel === selectedArea);
+}
+
+function excelDateToJS(serial) {
+  const utc_days = Math.floor(serial - 25569);
+  const utc_value = utc_days * 86400;
+  const date_info = new Date(utc_value * 1000);
+  return date_info.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// BUILD DROPDOWN
+function buildDropdown() {
+  const areas = getAreas();
+  const dropdown = document.getElementById('selectDropdown');
+  dropdown.innerHTML = '';
+  areas.forEach(area => {
+    const opt = document.createElement('div');
+    opt.className = 'custom-select-option' + (area === selectedArea ? ' selected' : '');
+    opt.textContent = area === 'all' ? 'Todas as áreas' : area;
+    opt.addEventListener('click', () => {
+      selectedArea = area;
+      document.getElementById('selectText').textContent = area === 'all' ? 'Todas as áreas' : area;
+      closeDropdown();
+      buildDropdown();
+      renderAll();
+    });
+    dropdown.appendChild(opt);
+  });
+}
+
+function closeDropdown() {
+  document.getElementById('selectBtn').classList.remove('open');
+  document.getElementById('selectDropdown').classList.remove('open');
+}
+
+document.getElementById('selectBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const btn = document.getElementById('selectBtn');
+  const dd = document.getElementById('selectDropdown');
+  btn.classList.toggle('open');
+  dd.classList.toggle('open');
+});
+document.addEventListener('click', closeDropdown);
+
+// KPIs
+function renderKPIs() {
+  const filtered = getFilteredEvents();
+  const totalInscritos = filtered.reduce((s, e) => s + e.Inscritos, 0);
+  const totalConfirmados = filtered.reduce((s, e) => s + e.Confirmados, 0);
+  const totalAvaliacoes = filtered.reduce((s, e) => s + e.Avaliacoes, 0);
+  const avgNPS = filtered.length ? (filtered.reduce((s, e) => s + e.NPS_Geral, 0) / filtered.length).toFixed(1) : 0;
+  const avgTaxa = filtered.length ? (filtered.reduce((s, e) => s + e.Taxa_Resposta, 0) / filtered.length * 100).toFixed(1) : 0;
+
+  const kpis = [
+    { icon: '👥', value: totalInscritos.toLocaleString('pt-BR'), label: 'Inscritos' },
+    { icon: '✅', value: totalConfirmados.toLocaleString('pt-BR'), label: 'Confirmados' },
+    { icon: '📝', value: totalAvaliacoes.toLocaleString('pt-BR'), label: 'Avaliações' },
+    { icon: '⭐', value: avgNPS, label: 'NPS Médio' },
+    { icon: '📊', value: avgTaxa + '%', label: 'Taxa de Resposta' },
+  ];
+
+  const grid = document.getElementById('kpiGrid');
+  grid.innerHTML = kpis.map(k => `
+    <div class="kpi-card">
+      <div class="kpi-icon">${k.icon}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-label">${k.label}</div>
+    </div>
+  `).join('');
+}
+
+// COURSE LIST
