@@ -135,7 +135,7 @@
 
 <script>
 // ===== DADOS INJETADOS PELO N8N =====
-const _DATA_ = {"eventos":[{"id":26758,"data":46042,"curso":"Evento de Pré-Lançamento da Comunidade VORA","area":"Acesso e Precificação","mod":"Online","inscritos":152,"confirmados":71,"aval":34,"taxa":0.4789,"nota":9.5882,"nps":91}],"palestrantes":[{"id_evento":26758,"nome":"Marcela Amaral Pontes","aval":33,"nota":9.7879,"nps":97},{"id_evento":26758,"nome":"Michel Conte","aval":33,"nota":9.6364,"nps":94},{"id_evento":26758,"nome":"Daniel Poiano","aval":33,"nota":9.5455,"nps":91},{"id_evento":26758,"nome":"Lorice Scalise","aval":33,"nota":9.8182,"nps":97},{"id_evento":26758,"nome":"Gabriela Tannus","aval":33,"nota":9.5758,"nps":88},{"id_evento":26758,"nome":"Marcela Amaral Pontes","aval":33,"nota":9.7879,"nps":97},{"id_evento":26758,"nome":"Michel Conte","aval":33,"nota":9.6364,"nps":94},{"id_evento":26758,"nome":"Daniel Poiano","aval":33,"nota":9.5455,"nps":91},{"id_evento":26758,"nome":"Lorice Scalise","aval":33,"nota":9.8182,"nps":97},{"id_evento":26758,"nome":"Gabriela Tannus","aval":33,"nota":9.5758,"nps":88}],"comentarios":{"26758":["Evento ótimo.","A formação da comunidade e formato proposto é bastante interessante, pois promove o debate, troca de ideias e estimula a participação. Aqui a discussão pode ser mais aprofundada  com profissionais que já atuam em acesso, porém estão inseridos em um cenário dinâmico e de diferentes culturas empresariais e   níveis distintos de maturidade  do trabalho de acesso ao mercado.","ótimo evento","parabéns pela palestra. Muito esclarecedora","Adorei a condução do evento, gostaria de mais oportunidades de participação online, são eventos que agregam muito valor.","Ótima iniciativa, Parabéns! Ansioso para receber o guia “A Função de Acesso e a Alta Performance na Nova Era do Valor em Saúde” apresentado durante o evento e demais frutos advindos da comunidade.","Excelente oportunidade de reunirmos profissionais que podem mudar o rumo do acesso no Brasil. Parabens pela iniciativa.","Excelente iniciativa. Parabéns aos idealizadores","Evento ótimo.","A formação da comunidade e formato proposto é bastante interessante, pois promove o debate, troca de ideias e estimula a participação. Aqui a discussão pode ser mais aprofundada  com profissionais que já atuam em acesso, porém estão inseridos em um cenário dinâmico e de diferentes culturas empresariais e   níveis distintos de maturidade  do trabalho de acesso ao mercado.","ótimo evento","parabéns pela palestra. Muito esclarecedora","Adorei a condução do evento, gostaria de mais oportunidades de participação online, são eventos que agregam muito valor.","Ótima iniciativa, Parabéns! Ansioso para receber o guia “A Função de Acesso e a Alta Performance na Nova Era do Valor em Saúde” apresentado durante o evento e demais frutos advindos da comunidade.","Excelente oportunidade de reunirmos profissionais que podem mudar o rumo do acesso no Brasil. Parabens pela iniciativa.","Excelente iniciativa. Parabéns aos idealizadores"]}};
+const _DATA_ = __DASHBOARD_DATA__;
 const EVENTOS = _DATA_.eventos;
 const PALESTRANTES = _DATA_.palestrantes;
 const COMENTARIOS = _DATA_.comentarios;
@@ -202,14 +202,6 @@ function formatMesAno(key) {
   var parts = key.split('-');
   var mes = parseInt(parts[1]) - 1;
   return MESES_NOMES[mes] + '/' + parts[0];
-}
-
-function pickMes(val, label) {
-  currentMes = val;
-  document.querySelector('#mesDropdown .cs-selected').innerHTML = label + ' <span>&#9660;</span>';
-  document.querySelectorAll('#mesDD .cs-option').forEach(o => o.classList.toggle('selected', o.textContent === label));
-  document.getElementById('mesDD').classList.remove('open');
-  applyFilters();
 }
 
 function toggleDD(id){
