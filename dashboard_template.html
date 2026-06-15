@@ -135,7 +135,7 @@
 
 <script>
 // ===== DADOS INJETADOS PELO N8N =====
-const _DATA_ = {"eventos":[{"id":26758,"data":46042,"curso":"Evento de Pré-Lançamento da Comunidade VORA","area":"Acesso e Precificação","mod":"Online","inscritos":152,"confirmados":71,"aval":34,"taxa":0.4789,"nota":9.5882,"nps":91}],"palestrantes":[{"id_evento":26758,"nome":"Marcela Amaral Pontes","aval":33,"nota":9.7879,"nps":97},{"id_evento":26758,"nome":"Michel Conte","aval":33,"nota":9.6364,"nps":94},{"id_evento":26758,"nome":"Daniel Poiano","aval":33,"nota":9.5455,"nps":91},{"id_evento":26758,"nome":"Lorice Scalise","aval":33,"nota":9.8182,"nps":97},{"id_evento":26758,"nome":"Gabriela Tannus","aval":33,"nota":9.5758,"nps":88},{"id_evento":26758,"nome":"Marcela Amaral Pontes","aval":33,"nota":9.7879,"nps":97},{"id_evento":26758,"nome":"Michel Conte","aval":33,"nota":9.6364,"nps":94},{"id_evento":26758,"nome":"Daniel Poiano","aval":33,"nota":9.5455,"nps":91},{"id_evento":26758,"nome":"Lorice Scalise","aval":33,"nota":9.8182,"nps":97},{"id_evento":26758,"nome":"Gabriela Tannus","aval":33,"nota":9.5758,"nps":88}],"comentarios":{"26758":["Evento ótimo.","A formação da comunidade e formato proposto é bastante interessante, pois promove o debate, troca de ideias e estimula a participação. Aqui a discussão pode ser mais aprofundada  com profissionais que já atuam em acesso, porém estão inseridos em um cenário dinâmico e de diferentes culturas empresariais e   níveis distintos de maturidade  do trabalho de acesso ao mercado.","ótimo evento","parabéns pela palestra. Muito esclarecedora","Adorei a condução do evento, gostaria de mais oportunidades de participação online, são eventos que agregam muito valor.","Ótima iniciativa, Parabéns! Ansioso para receber o guia “A Função de Acesso e a Alta Performance na Nova Era do Valor em Saúde” apresentado durante o evento e demais frutos advindos da comunidade.","Excelente oportunidade de reunirmos profissionais que podem mudar o rumo do acesso no Brasil. Parabens pela iniciativa.","Excelente iniciativa. Parabéns aos idealizadores","Evento ótimo.","A formação da comunidade e formato proposto é bastante interessante, pois promove o debate, troca de ideias e estimula a participação. Aqui a discussão pode ser mais aprofundada  com profissionais que já atuam em acesso, porém estão inseridos em um cenário dinâmico e de diferentes culturas empresariais e   níveis distintos de maturidade  do trabalho de acesso ao mercado.","ótimo evento","parabéns pela palestra. Muito esclarecedora","Adorei a condução do evento, gostaria de mais oportunidades de participação online, são eventos que agregam muito valor.","Ótima iniciativa, Parabéns! Ansioso para receber o guia “A Função de Acesso e a Alta Performance na Nova Era do Valor em Saúde” apresentado durante o evento e demais frutos advindos da comunidade.","Excelente oportunidade de reunirmos profissionais que podem mudar o rumo do acesso no Brasil. Parabens pela iniciativa.","Excelente iniciativa. Parabéns aos idealizadores"]}};
+const _DATA_ = __DASHBOARD_DATA__;
 const EVENTOS = _DATA_.eventos;
 const PALESTRANTES = _DATA_.palestrantes;
 const COMENTARIOS = _DATA_.comentarios;
@@ -158,17 +158,43 @@ let currentMes = '';
 
 const MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
+function excelSerialToDate(serial) {
+  // Converte número serial do Excel (ex: 46042) para objeto Date
+  var date = new Date((serial - 25569) * 86400 * 1000);
+  return date;
+}
+
 function getMesAno(dataStr) {
-  // Suporta formatos: "2026-01-20" ou "20/01/2026"
   if (!dataStr) return null;
-  var parts;
-  if (dataStr.includes('-')) {
-    parts = dataStr.split('-');
-    return parts[0] + '-' + parts[1]; // "2026-01"
-  } else {
-    parts = dataStr.split('/');
-    return parts[2] + '-' + parts[1]; // "2026-01"
+  var ano, mes;
+  // Número serial do Excel
+  if (typeof dataStr === 'number') {
+    var d = excelSerialToDate(dataStr);
+    ano = d.getUTCFullYear();
+    mes = String(d.getUTCMonth() + 1).padStart(2, '0');
+    return ano + '-' + mes;
   }
+  var parts;
+  if (String(dataStr).includes('-')) {
+    parts = String(dataStr).split('-');
+    return parts[0] + '-' + parts[1];
+  } else if (String(dataStr).includes('/')) {
+    parts = String(dataStr).split('/');
+    return parts[2] + '-' + parts[1];
+  }
+  return null;
+}
+
+function fmtData(dataStr) {
+  // Formata data para exibição dd/mm/aaaa
+  if (!dataStr) return '';
+  if (typeof dataStr === 'number') {
+    var d = excelSerialToDate(dataStr);
+    return String(d.getUTCDate()).padStart(2,'0') + '/' +
+           String(d.getUTCMonth()+1).padStart(2,'0') + '/' +
+           d.getUTCFullYear();
+  }
+  return dataStr;
 }
 
 function formatMesAno(key) {
@@ -197,11 +223,21 @@ document.addEventListener('click', function(e){
   if(!e.target.closest('.custom-select')) document.querySelectorAll('.cs-options').forEach(e=>e.classList.remove('open'));
 });
 
-function pickArea(val, label){
-  currentArea = val;
+function pickArea(idx){
+  currentArea = idx === -1 ? '' : window._areas[idx];
+  const label = idx === -1 ? 'Todos' : window._areas[idx];
   document.querySelector('#areaDropdown .cs-selected').innerHTML = label + ' <span>&#9660;</span>';
-  document.querySelectorAll('#areaDD .cs-option').forEach(o=>o.classList.toggle('selected', o.textContent===label));
+  document.querySelectorAll('#areaDD .cs-option').forEach((o,i)=>o.classList.toggle('selected', i-1===idx));
   document.getElementById('areaDD').classList.remove('open');
+  applyFilters();
+}
+
+function pickMes(idx){
+  currentMes = idx === -1 ? '' : window._meses[idx];
+  const label = idx === -1 ? 'Todos' : formatMesAno(window._meses[idx]);
+  document.querySelector('#mesDropdown .cs-selected').innerHTML = label + ' <span>&#9660;</span>';
+  document.querySelectorAll('#mesDD .cs-option').forEach((o,i)=>o.classList.toggle('selected', i-1===idx));
+  document.getElementById('mesDD').classList.remove('open');
   applyFilters();
 }
 
@@ -215,17 +251,19 @@ function pickMod(val){
 }
 
 function populateFilters(){
-  // Áreas
+  // Áreas — usa índice para evitar problema com aspas nos nomes
   const areas = [...new Set(EVENTOS.map(e=>e.area))].sort();
+  window._areas = areas;
   const dd = document.getElementById('areaDD');
-  dd.innerHTML = '<div class="cs-option selected" onclick="pickArea(\'\', \'Todos\')">Todos</div>' +
-    areas.map(a=>`<div class="cs-option" onclick="pickArea('${a.replace(/'/g,"\\'")}','${a.replace(/'/g,"\\'")}'">${a}</div>`).join('');
+  dd.innerHTML = '<div class="cs-option selected" onclick="pickArea(-1)">Todos</div>' +
+    areas.map((a, i) => `<div class="cs-option" onclick="pickArea(${i})">${a}</div>`).join('');
 
   // Mês/Ano — ordenado cronologicamente
   const meses = [...new Set(EVENTOS.map(e => getMesAno(e.data)).filter(Boolean))].sort();
+  window._meses = meses;
   const ddMes = document.getElementById('mesDD');
-  ddMes.innerHTML = '<div class="cs-option selected" onclick="pickMes(\'\', \'Todos\')">Todos</div>' +
-    meses.map(m => `<div class="cs-option" onclick="pickMes('${m}','${formatMesAno(m)}')">${formatMesAno(m)}</div>`).join('');
+  ddMes.innerHTML = '<div class="cs-option selected" onclick="pickMes(-1)">Todos</div>' +
+    meses.map((m, i) => `<div class="cs-option" onclick="pickMes(${i})">${formatMesAno(m)}</div>`).join('');
 }
 
 function applyFilters(){
@@ -264,7 +302,7 @@ function renderCourses(){
   list.innerHTML = filteredEventos.map(e=>`
     <div class="course-item${e.id===selectedId?' active':''}" onclick="selectCourse(${e.id})">
       <div class="course-title">${e.curso}</div>
-      <div class="course-meta">${e.data}</div>
+      <div class="course-meta">${fmtData(e.data)}</div>
       <div class="badges">
         <span class="badge badge-area">${e.area}</span>
         <span class="badge badge-mod">${e.mod}</span>
@@ -290,7 +328,7 @@ function selectCourse(id){
   document.getElementById('detailPanel').innerHTML = `
     <div class="detail-panel">
       <div class="detail-title">${ev.curso}</div>
-      <div class="detail-date">${ev.data} · ${ev.area} · ${ev.mod}</div>
+      <div class="detail-date">${fmtData(ev.data)} · ${ev.area} · ${ev.mod}</div>
       <div class="detail-kpis">
         <div class="detail-kpi"><div class="val">${ev.inscritos}</div><div class="lbl">Inscritos</div></div>
         <div class="detail-kpi"><div class="val">${ev.confirmados}</div><div class="lbl">Confirmados</div></div>
