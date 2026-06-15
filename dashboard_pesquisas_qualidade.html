@@ -6,715 +6,373 @@
 <title>Dashboard de Qualidade</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  
-  body {
-    background: #0d1b3e;
-    color: #e0e8ff;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    min-height: 100vh;
-  }
+  body { background: #0d1b3e; color: #e0e8ff; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
 
   /* HEADER */
-  .header {
-    background: linear-gradient(135deg, #0a1530 0%, #0d1b3e 50%, #0a1530 100%);
-    border-bottom: 2px solid #00e5c0;
-    padding: 20px 30px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 4px 20px rgba(0,229,192,0.15);
-  }
+  .header { background: linear-gradient(135deg, #0a1530 0%, #0d1b3e 100%); border-bottom: 2px solid #00e5c0; padding: 20px 30px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { color: #00e5c0; font-size: 1.6rem; letter-spacing: 1px; }
+  .header-sub { color: #7a9cc6; font-size: 0.85rem; margin-top: 4px; }
+  .logo { width: 44px; height: 44px; background: #00e5c0; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
 
-  .header-left { display: flex; align-items: center; gap: 15px; }
+  /* CONTAINER */
+  .container { padding: 24px 30px; }
 
-  .logo-icon {
-    width: 48px; height: 48px;
-    background: linear-gradient(135deg, #00e5c0, #0097a7);
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px;
-    box-shadow: 0 0 20px rgba(0,229,192,0.4);
-  }
+  /* FILTER */
+  .filter-bar { margin-bottom: 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .filter-label { color: #00e5c0; font-size: 0.85rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+  .custom-select-wrapper { position: relative; }
+  .custom-select { background: #132040; border: 1.5px solid #1e3a6e; color: #e0e8ff; padding: 10px 40px 10px 16px; border-radius: 8px; font-size: 0.92rem; cursor: pointer; min-width: 240px; appearance: none; outline: none; transition: border-color 0.2s; }
+  .custom-select:hover, .custom-select:focus { border-color: #00e5c0; }
+  .select-arrow { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #00e5c0; font-size: 0.75rem; }
+  .filter-count { background: #00e5c030; border: 1px solid #00e5c050; color: #00e5c0; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; }
 
-  .header h1 {
-    color: #00e5c0;
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: 1px;
-  }
+  /* KPIS */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .kpi-card { background: linear-gradient(145deg, #132040, #0e1f3d); border: 1px solid #1e3a6e; border-radius: 14px; padding: 20px 18px; position: relative; overflow: hidden; transition: transform 0.2s, border-color 0.2s; }
+  .kpi-card:hover { transform: translateY(-3px); border-color: #00e5c050; }
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #00e5c0, #0080ff); }
+  .kpi-label { color: #7a9cc6; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .kpi-value { color: #00e5c0; font-size: 2rem; font-weight: 700; line-height: 1; }
+  .kpi-value.white { color: #fff; }
+  .kpi-sub { color: #4a6fa5; font-size: 0.72rem; margin-top: 6px; }
+  .kpi-icon { position: absolute; right: 14px; top: 14px; font-size: 1.4rem; opacity: 0.3; }
 
-  .header-sub {
-    color: #7a9cc0;
-    font-size: 13px;
-    margin-top: 2px;
-  }
-
-  .header-date {
-    color: #7a9cc0;
-    font-size: 13px;
-    text-align: right;
-  }
-
-  /* MAIN CONTAINER */
-  .container {
-    padding: 30px;
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-
-  /* FILTER SECTION */
-  .filter-section {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(0,229,192,0.2);
-    border-radius: 16px;
-    padding: 20px 25px;
-    margin-bottom: 28px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    flex-wrap: wrap;
-  }
-
-  .filter-label {
-    color: #00e5c0;
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    white-space: nowrap;
-  }
-
-  .custom-select-wrapper {
-    position: relative;
-    min-width: 260px;
-  }
-
-  .custom-select-trigger {
-    background: rgba(0,229,192,0.08);
-    border: 1.5px solid rgba(0,229,192,0.35);
-    border-radius: 10px;
-    padding: 11px 40px 11px 16px;
-    color: #e0e8ff;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    transition: all 0.3s;
-    user-select: none;
-  }
-
-  .custom-select-trigger:hover {
-    border-color: #00e5c0;
-    background: rgba(0,229,192,0.12);
-    box-shadow: 0 0 12px rgba(0,229,192,0.2);
-  }
-
-  .custom-select-trigger.open {
-    border-color: #00e5c0;
-    border-radius: 10px 10px 0 0;
-    box-shadow: 0 0 16px rgba(0,229,192,0.25);
-  }
-
-  .select-arrow {
-    width: 0; height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #00e5c0;
-    transition: transform 0.3s;
-    flex-shrink: 0;
-    margin-left: 10px;
-  }
-
-  .select-arrow.open { transform: rotate(180deg); }
-
-  .custom-select-dropdown {
-    position: absolute;
-    top: 100%; left: 0; right: 0;
-    background: #0d2050;
-    border: 1.5px solid #00e5c0;
-    border-top: none;
-    border-radius: 0 0 10px 10px;
-    z-index: 100;
-    display: none;
-    max-height: 240px;
-    overflow-y: auto;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-  }
-
-  .custom-select-dropdown.open { display: block; }
-
-  .custom-select-option {
-    padding: 11px 16px;
-    font-size: 14px;
-    color: #c0d8f0;
-    cursor: pointer;
-    transition: all 0.2s;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-  }
-
-  .custom-select-option:last-child { border-bottom: none; }
-
-  .custom-select-option:hover, .custom-select-option.selected {
-    background: rgba(0,229,192,0.15);
-    color: #00e5c0;
-  }
-
-  .filter-badge {
-    background: rgba(0,229,192,0.15);
-    border: 1px solid rgba(0,229,192,0.4);
-    border-radius: 20px;
-    padding: 6px 14px;
-    font-size: 12px;
-    color: #00e5c0;
-  }
-
-  /* KPI SECTION */
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 18px;
-    margin-bottom: 28px;
-  }
-
-  .kpi-card {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(0,229,192,0.15);
-    border-radius: 16px;
-    padding: 22px 20px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s;
-    cursor: default;
-  }
-
-  .kpi-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #00e5c0, #0097a7);
-  }
-
-  .kpi-card:hover {
-    border-color: rgba(0,229,192,0.4);
-    background: rgba(0,229,192,0.06);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,229,192,0.1);
-  }
-
-  .kpi-icon {
-    font-size: 28px;
-    margin-bottom: 10px;
-    display: block;
-  }
-
-  .kpi-value {
-    font-size: 32px;
-    font-weight: 800;
-    color: #00e5c0;
-    line-height: 1;
-    margin-bottom: 6px;
-  }
-
-  .kpi-label {
-    font-size: 12px;
-    color: #7a9cc0;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    font-weight: 500;
-  }
-
-  .kpi-sub {
-    font-size: 11px;
-    color: rgba(0,229,192,0.5);
-    margin-top: 4px;
-  }
-
-  /* CONTENT GRID */
-  .content-grid {
-    display: grid;
-    grid-template-columns: 380px 1fr;
-    gap: 24px;
-    align-items: start;
-  }
+  /* MAIN GRID */
+  .main-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 20px; }
 
   /* COURSE LIST */
-  .panel {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(0,229,192,0.15);
-    border-radius: 16px;
-    overflow: hidden;
-  }
+  .panel { background: #0e1f3d; border: 1px solid #1e3a6e; border-radius: 14px; padding: 20px; }
+  .panel-title { color: #00e5c0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .panel-title::before { content: ''; width: 4px; height: 16px; background: #00e5c0; border-radius: 2px; display: block; }
 
-  .panel-header {
-    padding: 18px 22px;
-    border-bottom: 1px solid rgba(0,229,192,0.15);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: rgba(0,229,192,0.04);
-  }
-
-  .panel-title {
-    color: #00e5c0;
-    font-size: 15px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .panel-count {
-    background: rgba(0,229,192,0.15);
-    border-radius: 20px;
-    padding: 3px 10px;
-    font-size: 12px;
-    color: #00e5c0;
-  }
-
-  .course-list { padding: 12px; }
-
-  .course-item {
-    background: rgba(255,255,255,0.03);
-    border: 1.5px solid rgba(255,255,255,0.06);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: all 0.3s;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .course-item:last-child { margin-bottom: 0; }
-
-  .course-item:hover {
-    border-color: rgba(0,229,192,0.4);
-    background: rgba(0,229,192,0.06);
-    transform: translateX(3px);
-  }
-
-  .course-item.active {
-    border-color: #00e5c0;
-    background: rgba(0,229,192,0.1);
-    box-shadow: 0 0 16px rgba(0,229,192,0.15);
-  }
-
-  .course-item.active::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 4px;
-    background: #00e5c0;
-    border-radius: 4px 0 0 4px;
-  }
-
-  .course-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: #e0e8ff;
-    margin-bottom: 6px;
-    line-height: 1.4;
-  }
-
-  .course-meta {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-  }
-
-  .meta-tag {
-    font-size: 11px;
-    color: #7a9cc0;
-    background: rgba(255,255,255,0.06);
-    border-radius: 6px;
-    padding: 3px 8px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .nps-bar-container {
-    margin-top: 8px;
-  }
-
-  .nps-bar-label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    color: #7a9cc0;
-    margin-bottom: 5px;
-  }
-
-  .nps-bar-label strong {
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .nps-bar-track {
-    height: 6px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-
-  .nps-bar-fill {
-    height: 100%;
-    border-radius: 10px;
-    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
-  }
+  .course-item { background: #132040; border: 1.5px solid transparent; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; position: relative; }
+  .course-item:hover { border-color: #00e5c050; background: #162548; }
+  .course-item.active { border-color: #00e5c0; background: #163050; }
+  .course-name { font-size: 0.9rem; font-weight: 600; color: #d0e0ff; margin-bottom: 6px; line-height: 1.3; }
+  .course-meta { display: flex; gap: 12px; margin-bottom: 10px; }
+  .badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+  .badge-area { background: #1a3a6e; color: #7ab0ff; }
+  .badge-mode { background: #0d3030; color: #00e5c0; }
+  .nps-bar-container { margin-top: 6px; }
+  .nps-bar-label { display: flex; justify-content: space-between; font-size: 0.72rem; color: #7a9cc6; margin-bottom: 4px; }
+  .nps-bar-track { background: #0d1b3e; border-radius: 4px; height: 8px; overflow: hidden; }
+  .nps-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .active-indicator { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #00e5c0; font-size: 0.9rem; }
 
   /* DETAIL PANEL */
-  .detail-panel { min-height: 400px; }
-
-  .detail-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 80px 40px;
-    color: #4a6080;
-    text-align: center;
-  }
-
-  .detail-placeholder .ph-icon { font-size: 60px; margin-bottom: 16px; }
-  .detail-placeholder p { font-size: 15px; line-height: 1.6; }
-
-  .detail-content { display: none; }
-  .detail-content.visible { display: block; }
-
-  .detail-course-header {
-    padding: 22px 24px;
-    border-bottom: 1px solid rgba(0,229,192,0.15);
-    background: rgba(0,229,192,0.04);
-  }
-
-  .detail-course-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: #00e5c0;
-    margin-bottom: 8px;
-    line-height: 1.3;
-  }
-
-  .detail-course-meta {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .detail-meta-chip {
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 20px;
-    padding: 5px 12px;
-    font-size: 12px;
-    color: #a0b8d0;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .detail-meta-chip.highlight {
-    background: rgba(0,229,192,0.12);
-    border-color: rgba(0,229,192,0.3);
-    color: #00e5c0;
-    font-weight: 600;
-  }
+  .detail-panel { display: flex; flex-direction: column; gap: 16px; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 300px; color: #4a6fa5; gap: 12px; }
+  .empty-state-icon { font-size: 3rem; opacity: 0.4; }
 
   /* SPEAKERS */
-  .section-label {
-    font-size: 12px;
-    color: #00e5c0;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 700;
-    padding: 18px 24px 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .speakers-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 14px;
-    padding: 0 24px 20px;
-  }
-
-  .speaker-card {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 14px;
-    padding: 18px 14px;
-    text-align: center;
-    transition: all 0.3s;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .speaker-card:hover {
-    border-color: rgba(0,229,192,0.3);
-    background: rgba(0,229,192,0.05);
-    transform: translateY(-2px);
-  }
-
-  .speaker-avatar {
-    width: 56px; height: 56px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    font-weight: 700;
-    color: #0d1b3e;
-    margin: 0 auto 10px;
-    border: 2.5px solid;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  }
-
-  .speaker-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: #e0e8ff;
-    margin-bottom: 8px;
-    line-height: 1.3;
-  }
-
-  .speaker-stats {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-  }
-
-  .speaker-stat {
-    text-align: center;
-  }
-
-  .speaker-stat-val {
-    font-size: 16px;
-    font-weight: 800;
-    color: #00e5c0;
-    line-height: 1;
-  }
-
-  .speaker-stat-lbl {
-    font-size: 10px;
-    color: #7a9cc0;
-    margin-top: 2px;
-    text-transform: uppercase;
-  }
-
-  .speaker-nps-bar {
-    height: 4px;
-    border-radius: 4px;
-    margin-top: 10px;
-    transition: width 0.6s ease;
-  }
+  .speakers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .speaker-card { background: #132040; border: 1px solid #1e3a6e; border-radius: 12px; padding: 16px; text-align: center; transition: border-color 0.2s; }
+  .speaker-card:hover { border-color: #00e5c040; }
+  .avatar { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; color: #0d1b3e; margin: 0 auto 10px; border: 2px solid #00e5c040; }
+  .speaker-name { font-size: 0.82rem; font-weight: 600; color: #d0e0ff; margin-bottom: 8px; line-height: 1.3; }
+  .speaker-stats { display: flex; justify-content: center; gap: 12px; }
+  .stat-pill { background: #0d1b3e; border-radius: 6px; padding: 4px 8px; font-size: 0.72rem; }
+  .stat-pill span { color: #00e5c0; font-weight: 700; }
+  .stat-pill label { color: #4a6fa5; }
+  .speaker-nps-bar { margin-top: 8px; height: 4px; background: #0d1b3e; border-radius: 2px; overflow: hidden; }
+  .speaker-nps-fill { height: 100%; border-radius: 2px; }
 
   /* COMMENTS */
-  .comments-section {
-    padding: 0 24px 24px;
-    border-top: 1px solid rgba(0,229,192,0.1);
-  }
+  .comments-list { max-height: 340px; overflow-y: auto; padding-right: 4px; }
+  .comments-list::-webkit-scrollbar { width: 4px; }
+  .comments-list::-webkit-scrollbar-track { background: #0d1b3e; border-radius: 2px; }
+  .comments-list::-webkit-scrollbar-thumb { background: #1e3a6e; border-radius: 2px; }
+  .comment-item { background: #132040; border-left: 3px solid #00e5c040; border-radius: 0 8px 8px 0; padding: 12px 14px; margin-bottom: 8px; transition: border-color 0.2s; }
+  .comment-item:hover { border-left-color: #00e5c0; }
+  .comment-text { font-size: 0.83rem; color: #c0d4f0; line-height: 1.5; }
+  .comment-footer { margin-top: 6px; display: flex; align-items: center; gap: 6px; }
+  .comment-mode { font-size: 0.68rem; color: #4a6fa5; background: #0d1b3e; padding: 2px 7px; border-radius: 10px; }
 
-  .comments-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 14px;
-    margin-top: 4px;
-  }
+  /* NPS COLOR HELPER */
+  .nps-excellent { background: linear-gradient(90deg, #00e5c0, #00b896); }
+  .nps-good { background: linear-gradient(90deg, #0080ff, #0060cc); }
+  .nps-fair { background: linear-gradient(90deg, #ffaa00, #ff8800); }
+  .nps-poor { background: linear-gradient(90deg, #ff4444, #cc2222); }
 
-  .comment-card {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 12px;
-    padding: 16px;
-    position: relative;
-    transition: all 0.3s;
-  }
-
-  .comment-card:hover {
-    border-color: rgba(0,229,192,0.2);
-    background: rgba(0,229,192,0.04);
-  }
-
-  .comment-quote {
-    font-size: 32px;
-    color: rgba(0,229,192,0.2);
-    line-height: 1;
-    margin-bottom: 6px;
-    font-family: Georgia, serif;
-  }
-
-  .comment-text {
-    font-size: 13px;
-    color: #c0d8f0;
-    line-height: 1.6;
-    font-style: italic;
-  }
-
-  .comment-footer {
-    margin-top: 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .comment-badge {
-    font-size: 11px;
-    color: #00e5c0;
-    background: rgba(0,229,192,0.1);
-    border-radius: 6px;
-    padding: 3px 8px;
-  }
-
-  /* SCROLLBAR */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
-  ::-webkit-scrollbar-thumb { background: rgba(0,229,192,0.3); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(0,229,192,0.5); }
-
-  /* DIVIDER */
-  .divider {
-    height: 1px;
-    background: rgba(0,229,192,0.1);
-    margin: 0 24px;
-  }
-
-  /* NPS Color helper */
-  .nps-excellent { color: #00e5c0; }
-  .nps-good { color: #52d48a; }
-  .nps-average { color: #f0c040; }
-  .nps-poor { color: #f06060; }
-
-  /* Responsive */
-  @media (max-width: 1100px) {
-    .content-grid { grid-template-columns: 1fr; }
-    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
-  }
-
-  @media (max-width: 700px) {
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
     .container { padding: 16px; }
-    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-    .header { flex-direction: column; gap: 10px; text-align: center; }
+    .header { padding: 16px; }
+    .header h1 { font-size: 1.2rem; }
   }
 
-  /* Animations */
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+  /* ANIMATIONS */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.3s ease forwards; }
 
-  .fade-in { animation: fadeIn 0.4s ease forwards; }
+  .section-divider { border: none; border-top: 1px solid #1e3a6e; margin: 4px 0 12px; }
 
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(0,229,192,0.3); }
-    50% { box-shadow: 0 0 0 8px rgba(0,229,192,0); }
-  }
-
-  .pulse { animation: pulse 2s infinite; }
+  .detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .detail-title { font-size: 1rem; font-weight: 700; color: #d0e0ff; flex: 1; line-height: 1.4; }
+  .detail-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .nps-big { background: #132040; border: 2px solid; border-radius: 12px; padding: 8px 16px; text-align: center; min-width: 80px; }
+  .nps-big .val { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+  .nps-big .lbl { font-size: 0.65rem; color: #7a9cc6; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-left">
-    <div class="logo-icon">📊</div>
-    <div>
-      <h1>QUALITY DASHBOARD</h1>
-      <div class="header-sub">Pesquisas de Satisfação & NPS · Eventos & Treinamentos</div>
-    </div>
+  <div>
+    <h1>📊 Dashboard de Qualidade</h1>
+    <div class="header-sub">Pesquisas de Satisfação · Análise de Eventos e Palestrantes</div>
   </div>
-  <div class="header-date" id="headerDate"></div>
+  <div class="logo">✦</div>
 </div>
 
 <div class="container">
 
-  <!-- FILTER -->
-  <div class="filter-section">
-    <span class="filter-label">🔍 Filtrar por Área:</span>
-    <div class="custom-select-wrapper" id="selectWrapper">
-      <div class="custom-select-trigger" id="selectTrigger">
-        <span id="selectText">Todas as Áreas</span>
-        <div class="select-arrow" id="selectArrow"></div>
-      </div>
-      <div class="custom-select-dropdown" id="selectDropdown"></div>
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <span class="filter-label">🔍 Filtrar por Área</span>
+    <div class="custom-select-wrapper">
+      <select class="custom-select" id="areaFilter" onchange="applyFilter()">
+        <option value="">Todas as Áreas</option>
+      </select>
+      <span class="select-arrow">▼</span>
     </div>
-    <div class="filter-badge" id="filterBadge">✓ Todos os eventos</div>
+    <span class="filter-count" id="filterCount"></span>
   </div>
 
-  <!-- KPIs -->
-  <div class="kpi-grid" id="kpiGrid">
-    <div class="kpi-card pulse">
-      <span class="kpi-icon">👥</span>
-      <div class="kpi-value" id="kpiInscritos">—</div>
-      <div class="kpi-label">Inscritos</div>
-      <div class="kpi-sub">Total de registros</div>
+  <!-- KPIS -->
+  <div class="kpis" id="kpiSection">
+    <div class="kpi-card">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-label">Total Inscritos</div>
+      <div class="kpi-value white" id="kpiInscritos">—</div>
+      <div class="kpi-sub">participantes cadastrados</div>
     </div>
     <div class="kpi-card">
-      <span class="kpi-icon">✅</span>
-      <div class="kpi-value" id="kpiConfirmados">—</div>
+      <div class="kpi-icon">✅</div>
       <div class="kpi-label">Confirmados</div>
-      <div class="kpi-sub">Presença confirmada</div>
+      <div class="kpi-value white" id="kpiConfirmados">—</div>
+      <div class="kpi-sub">presença confirmada</div>
     </div>
     <div class="kpi-card">
-      <span class="kpi-icon">📝</span>
-      <div class="kpi-value" id="kpiAvaliacoes">—</div>
+      <div class="kpi-icon">📋</div>
       <div class="kpi-label">Avaliações</div>
-      <div class="kpi-sub">Respostas recebidas</div>
+      <div class="kpi-value white" id="kpiAvaliacoes">—</div>
+      <div class="kpi-sub">respostas recebidas</div>
     </div>
     <div class="kpi-card">
-      <span class="kpi-icon">⭐</span>
-      <div class="kpi-value" id="kpiNPS">—</div>
+      <div class="kpi-icon">⭐</div>
       <div class="kpi-label">NPS Médio</div>
-      <div class="kpi-sub">Net Promoter Score</div>
+      <div class="kpi-value" id="kpiNPS">—</div>
+      <div class="kpi-sub">net promoter score</div>
     </div>
     <div class="kpi-card">
-      <span class="kpi-icon">📈</span>
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-label">Taxa de Resposta</div>
       <div class="kpi-value" id="kpiTaxa">—</div>
-      <div class="kpi-label">Taxa Resposta</div>
-      <div class="kpi-sub">% de respondentes</div>
+      <div class="kpi-sub">média dos eventos</div>
     </div>
   </div>
 
-  <!-- CONTENT GRID -->
-  <div class="content-grid">
+  <!-- MAIN GRID -->
+  <div class="main-grid">
 
     <!-- COURSE LIST -->
     <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          🎓 Cursos & Eventos
-        </div>
-        <div class="panel-count" id="courseCount">0 eventos</div>
-      </div>
-      <div class="course-list" id="courseList"></div>
+      <div class="panel-title">Eventos</div>
+      <div id="courseList"></div>
     </div>
 
     <!-- DETAIL PANEL -->
     <div class="panel detail-panel" id="detailPanel">
-      <div class="detail-placeholder" id="detailPlaceholder">
-        <div class="ph-icon">👆</div>
-        <p>Selecione um evento na lista<br>para visualizar detalhes,<br>palestrantes e comentários.</p>
+      <div class="empty-state" id="emptyState">
+        <div class="empty-state-icon">🎯</div>
+        <div style="font-size:1rem; color:#5a80b5;">Selecione um evento</div>
+        <div style="font-size:0.8rem; color:#3a5a8a;">para ver palestrantes e comentários</div>
       </div>
-      <div class="detail-content" id="detailContent"></div>
+      <div id="detailContent" style="display:none;"></div>
     </div>
 
   </div>
 </div>
 
 <script>
-// ============================================================
-// DATA
-// ============================================================
-const EVENTOS = [{"ID_Evento":26758,"Data_Evento":46042,"Curso":"Evento de Pré-Lançamento da Comunidade VORA","Area_Responsavel":"Acesso e Precificação","Modalidade":"Online","Inscritos":152,"Confirmados":71,"Avaliacoes":34,"Taxa_Resposta":0.4789,"Nota_Media_Geral":9.5882,"NPS_Geral":91},{"ID_Evento":26758,"Data_Evento":46042,"Curso":"Evento de Pré-Lançamento da Comunidade VORA","Area_Responsavel":"Acesso e Precificação","Modalidade":"Online","Inscritos":152,"Confirmados":71,"Avaliacoes":34,"Taxa_Resposta":0.4789,"Nota_Media_Geral":9.5882,"NPS_Geral":91}];
+const EVENTOS = [{"ID_Evento":26758,"Data_Evento":46042,"Curso":"Evento de Pré-Lançamento da Comunidade VORA","Area_Responsavel":"Acesso e Precificação","Modalidade":"Online","Inscritos":152,"Confirmados":71,"Avaliacoes":34,"Taxa_Resposta":0.4789,"Nota_Media_Geral":9.5882,"NPS_Geral":91}];
 
-const PALESTRANTES = [{"ID_Avaliacao_Palestrante":"26758-PAL-1","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Marcela Amaral Pontes","Avaliacoes":33,"Nota_Media":9.7879,"NPS":97},{"ID_Avaliacao_Palestrante":"26758-PAL-2","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Michel Conte","Avaliacoes":33,"Nota_Media":9.6364,"NPS":94},{"ID_Avaliacao_Palestrante":"26758-PAL-3","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Daniel Poiano","Avaliacoes":33,"Nota_Media":9.5455,"NPS":91},{"ID_Avaliacao_Palestrante":"26758-PAL-4","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Lorice Scalise","Avaliacoes":33,"Nota_Media":9.8182,"NPS":97},{"ID_Avaliacao_Palestrante":"26758-PAL-5","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Gabriela Tannus","Avaliacoes":33,"Nota_Media":9.5758,"NPS":88}];
+const PALESTRANTES_RAW = [{"ID_Avaliacao_Palestrante":"26758-PAL-1","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Marcela Amaral Pontes","Avaliacoes":33,"Nota_Media":9.7879,"NPS":97},{"ID_Avaliacao_Palestrante":"26758-PAL-2","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Michel Conte","Avaliacoes":33,"Nota_Media":9.6364,"NPS":94},{"ID_Avaliacao_Palestrante":"26758-PAL-3","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Daniel Poiano","Avaliacoes":33,"Nota_Media":9.5455,"NPS":91},{"ID_Avaliacao_Palestrante":"26758-PAL-4","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Lorice Scalise","Avaliacoes":33,"Nota_Media":9.8182,"NPS":97},{"ID_Avaliacao_Palestrante":"26758-PAL-5","ID_Evento":26758,"Data_Evento":46042,"Área responsável":"Acesso e Precificação","Curso":"Evento de Pré-Lançamento da Comunidade VORA","Palestrante":"Gabriela Tannus","Avaliacoes":33,"Nota_Media":9.5758,"NPS":88}];
 
-const COMENTARIOS = [{"ID_Comentario":"26758-COM-1","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Evento ótimo.","Participacao":"Online"},{"ID_Comentario":"26758-COM-2","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"A formação da comunidade e formato proposto é bastante interessante, pois promove o debate, troca de ideias e estimula a participação. Aqui a discussão pode ser mais aprofundada  com profissionais que já atuam em acesso, porém estão inseridos em um cenário dinâmico e de diferentes culturas empresariais e   níveis distintos de maturidade  do trabalho de acesso ao mercado.","Participacao":"Online"},{"ID_Comentario":"26758-COM-3","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"ótimo evento","Participacao":"Online"},{"ID_Comentario":"26758-COM-4","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"parabéns pela palestra. Muito esclarecedora","Participacao":"Online"},{"ID_Comentario":"26758-COM-5","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Adorei a condução do evento, gostaria de mais oportunidades de participação online, são eventos que agregam muito valor.","Participacao":"Online"},{"ID_Comentario":"26758-COM-6","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Ótima iniciativa, Parabéns! Ansioso para receber o guia "A Função de Acesso e a Alta Performance na Nova Era do Valor em Saúde" apresentado durante o evento e demais frutos advindos da comunidade.","Participacao":"Online"},{"ID_Comentario":"26758-COM-7","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Excelente oportunidade de reunirmos profissionais que podem mudar o rumo do acesso no Brasil
+const COMENTARIOS_RAW = [{"ID_Comentario":"26758-COM-1","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Evento ótimo.","Participacao":"Online"},{"ID_Comentario":"26758-COM-2","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"A formação da comunidade e formato proposto é bastante interessante, pois promove o debate, troca de ideias e estimula a participação. Aqui a discussão pode ser mais aprofundada  com profissionais que já atuam em acesso, porém estão inseridos em um cenário dinâmico e de diferentes culturas empresariais e   níveis distintos de maturidade  do trabalho de acesso ao mercado.","Participacao":"Online"},{"ID_Comentario":"26758-COM-3","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"ótimo evento","Participacao":"Online"},{"ID_Comentario":"26758-COM-4","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"parabéns pela palestra. Muito esclarecedora","Participacao":"Online"},{"ID_Comentario":"26758-COM-5","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Adorei a condução do evento, gostaria de mais oportunidades de participação online, são eventos que agregam muito valor.","Participacao":"Online"},{"ID_Comentario":"26758-COM-6","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Ótima iniciativa, Parabéns! Ansioso para receber o guia \"A Função de Acesso e a Alta Performance na Nova Era do Valor em Saúde\" apresentado durante o evento e demais frutos advindos da comunidade.","Participacao":"Online"},{"ID_Comentario":"26758-COM-7","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Excelente oportunidade de reunirmos profissionais que podem mudar o rumo do acesso no Brasil. Parabens pela iniciativa.","Participacao":"Online"},{"ID_Comentario":"26758-COM-8","ID_Evento":26758,"Data_Evento":46042,"Evento":"Evento de Pré-Lançamento da Comunidade VORA","Comentario":"Excelente iniciativa. Parabéns aos idealizadores","Participacao":"Online"}];
+
+// Deduplicate palestrantes and comentarios
+const PALESTRANTES = [];
+const palSeenIds = new Set();
+PALESTRANTES_RAW.forEach(p => {
+  if (!palSeenIds.has(p.ID_Avaliacao_Palestrante)) {
+    palSeenIds.add(p.ID_Avaliacao_Palestrante);
+    PALESTRANTES.push(p);
+  }
+});
+
+const COMENTARIOS = [];
+const comSeenIds = new Set();
+COMENTARIOS_RAW.forEach(c => {
+  if (!comSeenIds.has(c.ID_Comentario)) {
+    comSeenIds.add(c.ID_Comentario);
+    COMENTARIOS.push(c);
+  }
+});
+
+let filteredEventos = [...EVENTOS];
+let selectedEventoId = null;
+
+const avatarColors = ['#00e5c0','#0080ff','#ff6b6b','#ffaa00','#a855f7','#f97316','#22d3ee','#84cc16'];
+
+function getInitials(name) {
+  return name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
+}
+
+function getNPSClass(nps) {
+  if (nps >= 75) return 'nps-excellent';
+  if (nps >= 50) return 'nps-good';
+  if (nps >= 0) return 'nps-fair';
+  return 'nps-poor';
+}
+
+function getNPSColor(nps) {
+  if (nps >= 75) return '#00e5c0';
+  if (nps >= 50) return '#0080ff';
+  if (nps >= 0) return '#ffaa00';
+  return '#ff4444';
+}
+
+function excelDateToString(serial) {
+  const utc_days = Math.floor(serial - 25569);
+  const utc_value = utc_days * 86400;
+  const date = new Date(utc_value * 1000);
+  return date.toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function buildAreaFilter() {
+  const areas = [...new Set(EVENTOS.map(e => e.Area_Responsavel))].sort();
+  const sel = document.getElementById('areaFilter');
+  areas.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a;
+    opt.textContent = a;
+    sel.appendChild(opt);
+  });
+}
+
+function applyFilter() {
+  const area = document.getElementById('areaFilter').value;
+  filteredEventos = area ? EVENTOS.filter(e => e.Area_Responsavel === area) : [...EVENTOS];
+  selectedEventoId = null;
+  renderKPIs();
+  renderCourseList();
+  resetDetail();
+  updateFilterCount();
+}
+
+function updateFilterCount() {
+  const el = document.getElementById('filterCount');
+  el.textContent = `${filteredEventos.length} evento${filteredEventos.length !== 1 ? 's' : ''}`;
+}
+
+function renderKPIs() {
+  const inscritos = filteredEventos.reduce((s,e) => s + e.Inscritos, 0);
+  const confirmados = filteredEventos.reduce((s,e) => s + e.Confirmados, 0);
+  const avaliacoes = filteredEventos.reduce((s,e) => s + e.Avaliacoes, 0);
+  const npsMedia = filteredEventos.length ? (filteredEventos.reduce((s,e) => s + e.NPS_Geral, 0) / filteredEventos.length).toFixed(1) : '—';
+  const taxaMedia = filteredEventos.length ? (filteredEventos.reduce((s,e) => s + e.Taxa_Resposta, 0) / filteredEventos.length * 100).toFixed(1) + '%' : '—';
+
+  document.getElementById('kpiInscritos').textContent = inscritos.toLocaleString('pt-BR');
+  document.getElementById('kpiConfirmados').textContent = confirmados.toLocaleString('pt-BR');
+  document.getElementById('kpiAvaliacoes').textContent = avaliacoes.toLocaleString('pt-BR');
+  document.getElementById('kpiNPS').textContent = npsMedia;
+  document.getElementById('kpiTaxa').textContent = taxaMedia;
+}
+
+function renderCourseList() {
+  const list = document.getElementById('courseList');
+  list.innerHTML = '';
+  if (filteredEventos.length === 0) {
+    list.innerHTML = '<div style="color:#4a6fa5;text-align:center;padding:24px;font-size:0.85rem;">Nenhum evento encontrado</div>';
+    return;
+  }
+  filteredEventos.forEach(ev => {
+    const npsW = Math.min(100, Math.max(0, ev.NPS_Geral));
+    const npsColor = getNPSColor(ev.NPS_Geral);
+    const npsClass = getNPSClass(ev.NPS_Geral);
+    const isActive = selectedEventoId === ev.ID_Evento;
+    const div = document.createElement('div');
+    div.className = 'course-item' + (isActive ? ' active' : '');
+    div.innerHTML = `
+      <div class="course-name">${ev.Curso}</div>
+      <div class="course-meta">
+        <span class="badge badge-area">${ev.Area_Responsavel}</span>
+        <span class="badge badge-mode">${ev.Modalidade}</span>
+      </div>
+      <div class="nps-bar-container">
+        <div class="nps-bar-label">
+          <span>NPS</span>
+          <span style="color:${npsColor};font-weight:700;">${ev.NPS_Geral}</span>
+        </div>
+        <div class="nps-bar-track">
+          <div class="nps-bar-fill ${npsClass}" style="width:${npsW}%"></div>
+        </div>
+      </div>
+      ${isActive ? '<span class="active-indicator">▶</span>' : ''}
+    `;
+    div.addEventListener('click', () => selectEvento(ev.ID_Evento));
+    list.appendChild(div);
+  });
+}
+
+function selectEvento(id) {
+  selectedEventoId = id;
+  renderCourseList();
+  renderDetail(id);
+}
+
+function resetDetail() {
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('detailContent').style.display = 'none';
+}
+
+function renderDetail(id) {
+  const ev = EVENTOS.find(e => e.ID_Evento === id);
+  const pals = PALESTRANTES.filter(p => p.ID_Evento === id);
+  const coms = COMENTARIOS.filter(c => c.ID_Evento === id);
+
+  document.getElementById('emptyState').style.display = 'none';
+  const dc = document.getElementById('detailContent');
+  dc.style.display = 'block';
+  dc.className = 'fade-in';
+
+  const npsColor = getNPSColor(ev.NPS_Geral);
+  const dateStr = excelDateToString(ev.Data_Evento);
+
+  let speakersHTML = pals.map((p, i) => {
+    const color = avatarColors[i % avatarColors.length];
+    const initials = getInitials(p.Palestrante);
+    const npsC = getNPSColor(p.NPS);
+    const npsW = Math.min(100, Math.max(0, p.NPS));
+    return `
+      <div class="speaker-card">
+        <div class="avatar" style="background:${color};">${initials}</div>
+        <div class="speaker-name">${p.Palestrante}</div>
+        <div class="speaker-stats">
+          <div class="stat-pill"><span>${p.Nota_Media.toFixed(1)}</span><br><label>Nota</label></div>
+          <div class="stat-pill"><span style="color:${npsC};">${p.NPS}</span><br><label>NPS</label></div>
+          <div class="stat-pill"><span>${p.Avaliacoes}</span><br><label>Aval.</label></div>
+        </div>
+        <div class="speaker-nps-bar">
+          <div class="speaker-nps-fill ${getNPSClass(p.NPS)}" style="width:${npsW}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  let commentsHTML = coms.map(c => `
+    <div class="comment-item">
+      <div class="
