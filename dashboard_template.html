@@ -316,7 +316,7 @@ function selectCourse(id){
   renderCourses();
   const ev = EVENTOS.find(e=>e.id===id);
   const pals = PALESTRANTES.filter(p=>p.id_evento===id);
-  const coms = COMENTARIOS[id] || [];
+  const coms = COMENTARIOS[String(id)] || [];
   document.getElementById('detailPanel').innerHTML = `
     <div class="detail-panel">
       <div class="detail-title">${ev.curso}</div>
