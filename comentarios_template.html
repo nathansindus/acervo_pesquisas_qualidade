@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comentários — Programa Educacional</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1b3e;color:#fff;min-height:100vh;padding:24px;overflow-x:hidden;}
+  h1{font-size:26px;font-weight:700;color:#00e5c0;margin-bottom:4px;}
+  .subtitle{font-size:13px;color:#7eb8d4;margin-bottom:20px;}
+  .top-bar{display:flex;align-items:center;gap:16px;margin-bottom:24px;flex-wrap:wrap;}
+  .back-btn{display:inline-flex;align-items:center;gap:6px;color:#00e5c0;font-size:13px;background:#0a1428;border:1px solid #1e3a5f;border-radius:6px;padding:7px 14px;cursor:pointer;text-decoration:none;transition:background 0.15s;}
+  .back-btn:hover{background:#0f2040;}
+  .filters{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end;}
+  .filter-group{display:flex;flex-direction:column;gap:4px;}
+  .filter-group label{font-size:11px;font-weight:600;color:#00e5c0;text-transform:uppercase;letter-spacing:0.05em;}
+  select{background:#0a1428;border:1px solid #1e3a5f;color:#fff;padding:6px 32px 6px 10px;border-radius:6px;font-size:13px;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2300e5c0' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;min-width:260px;}
+  select:focus{outline:none;border-color:#00e5c0;}
+  select option{background:#0a1428;color:#fff;}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:20px;}
+  .kpi{background:#0a1428;border:1px solid #1e3a5f;border-radius:10px;padding:14px 16px;}
+  .kpi-val{font-size:24px;font-weight:700;color:#fff;line-height:1;}
+  .kpi-val.green{color:#00e5c0;}
+  .kpi-val.amber{color:#f5a623;}
+  .kpi-val.red{color:#ff5c5c;}
+  .kpi-lbl{font-size:11px;color:#7eb8d4;margin-top:4px;}
+  .curso-info{margin-bottom:20px;}
+  .curso-title{font-size:17px;font-weight:700;color:#fff;margin-bottom:4px;}
+  .curso-meta{font-size:12px;color:#7eb8d4;display:flex;gap:10px;flex-wrap:wrap;}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .badge{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600;}
+  .badge-area{background:#0f3a2e;color:#00e5c0;border:1px solid #0d4c38;}
+  .badge-mod{background:#1a1a4a;color:#a0a0ff;border:1px solid #2a2a6a;}
+  .section-header{font-size:12px;font-weight:700;color:#00e5c0;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .comments-list{display:flex;flex-direction:column;gap:10px;}
+  .comment-card{background:#0a1428;border:1px solid #1e3a5f;border-radius:10px;padding:14px 16px;}
+  .comment-text{color:#c8e0f0;font-size:13px;line-height:1.7;}
+  .comment-footer{margin-top:8px;display:flex;gap:8px;}
+  .tag{font-size:11px;padding:2px 8px;border-radius:4px;background:#0d2040;color:#7eb8d4;border:1px solid #1e3a5f;}
+  .empty{text-align:center;padding:60px 20px;color:#7eb8d4;font-size:14px;}
+  .count-badge{background:#0f3a2e;color:#00e5c0;border:1px solid #0d4c38;font-size:11px;padding:2px 8px;border-radius:99px;font-weight:600;}
+</style>
+</head>
+<body>
+<h1>Comentários — Programa Educacional</h1>
+<p class="subtitle">Leitura detalhada dos comentários por curso</p>
+
+<div class="top-bar">
+  <a class="back-btn" href="dashboard_pesquisas_qualidade.html">← Voltar ao dashboard</a>
+</div>
+
+<div class="filters">
+  <div class="filter-group">
+    <label>Curso</label>
+    <select id="cursoSelect" onchange="selectCurso(parseInt(this.value))"></select>
+  </div>
+</div>
+
+<div class="kpis" id="kpis"></div>
+<div class="curso-info" id="cursoInfo"></div>
+
+<div class="section-header">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  Comentários
+  <span class="count-badge" id="countBadge">0</span>
+</div>
+<div class="comments-list" id="commentsList"></div>
+
+<script>
+const _CDATA_ = __COMENTARIOS_DATA__;
+const EVENTOS = _CDATA_.eventos;
+const COMENTARIOS = _CDATA_.comentarios;
+
+function npsColor(n){return n>=70?'green':n>=50?'amber':'red';}
+
+function formatDate(serial){
+  if(!serial) return '';
+  const d = new Date((serial - 25569) * 86400 * 1000);
+  return d.toLocaleDateString('pt-BR');
+}
+
+function selectCurso(id){
+  const ev = EVENTOS.find(e => e.id === id);
+  if(!ev) return;
+  document.getElementById('cursoSelect').value = id;
+
+  // KPIs
+  const coms = COMENTARIOS[String(id)] || [];
+  const npsClass = npsColor(ev.nps);
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="kpi-val">${coms.length}</div><div class="kpi-lbl">Comentários</div></div>
+    <div class="kpi"><div class="kpi-val">${ev.aval}</div><div class="kpi-lbl">Avaliações</div></div>
+    <div class="kpi"><div class="kpi-val ${npsClass}">${ev.nps}</div><div class="kpi-lbl">NPS Geral</div></div>
+    <div class="kpi"><div class="kpi-val" style="font-size:16px;padding-top:4px">${ev.mod}</div><div class="kpi-lbl">Modalidade</div></div>
+    <div class="kpi"><div class="kpi-val">${(ev.taxa*100).toFixed(0)}%</div><div class="kpi-lbl">Taxa Resposta</div></div>
+  `;
+
+  // Info do curso
+  document.getElementById('cursoInfo').innerHTML = `
+    <div class="curso-title">${ev.curso}</div>
+    <div class="curso-meta">
+      <span>${formatDate(ev.data)}</span>
+      <span>·</span>
+      <span>${ev.inscritos} inscritos</span>
+      <span>·</span>
+      <span>${ev.confirmados} confirmados</span>
+    </div>
+    <div class="badges">
+      <span class="badge badge-area">${ev.area}</span>
+      <span class="badge badge-mod">${ev.mod}</span>
+    </div>
+  `;
+
+  // Comentários
+  document.getElementById('countBadge').textContent = coms.length;
+  if(coms.length === 0){
+    document.getElementById('commentsList').innerHTML = '<div class="empty">Nenhum comentário registrado para este curso.</div>';
+    return;
+  }
+  document.getElementById('commentsList').innerHTML = coms.map(c => `
+    <div class="comment-card">
+      <div class="comment-text">"${c}"</div>
+    </div>
+  `).join('');
+}
+
+function init(){
+  const select = document.getElementById('cursoSelect');
+  EVENTOS.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.id;
+    opt.textContent = e.curso;
+    select.appendChild(opt);
+  });
+
+  // Verificar se veio com ?id= na URL
+  const params = new URLSearchParams(window.location.search);
+  const idParam = params.get('id');
+  const firstId = idParam ? parseInt(idParam) : EVENTOS[0].id;
+  selectCurso(firstId);
+}
+
+init();
+</script>
+</body>
+</html>
