@@ -42,6 +42,8 @@
   .nps-fill{height:100%;border-radius:3px;background:#00e5c0;transition:width 0.4s ease;}
   .nps-label{font-size:10px;color:#7eb8d4;}
   .detail-panel{padding:16px;overflow-y:auto;max-height:420px;}
+  .comments-btn{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:9px 16px;background:#0f3a2e;color:#00e5c0;border:1px solid #0d4c38;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;transition:background 0.15s;}
+  .comments-btn:hover{background:#1a5040;}
   .detail-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:8px;color:#3a5a7a;text-align:center;}
   .detail-empty svg{opacity:0.4;}
   .detail-empty p{font-size:13px;}
@@ -316,7 +318,7 @@ function selectCourse(id){
   renderCourses();
   const ev = EVENTOS.find(e=>e.id===id);
   const pals = PALESTRANTES.filter(p=>p.id_evento===id);
-  const coms = COMENTARIOS[String(id)] || [];
+  var comCount = (COMENTARIOS[String(id)] || []).length;
   document.getElementById('detailPanel').innerHTML = `
     <div class="detail-panel">
       <div class="detail-title">${ev.curso}</div>
@@ -345,11 +347,11 @@ function selectCourse(id){
           </div>
         `).join('')}
       ` : ''}
-      ${coms.length ? `
-        <div class="section-title">Comentários (${coms.length})</div>
-        <div class="comments-list">
-          ${coms.map(c=>`<div class="comment-item">"${c}"</div>`).join('')}
-        </div>
+      ${comCount > 0 ? `
+        <a class="comments-btn" href="comentarios_pesquisas_qualidade.html?id=${id}" target="_blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Ver ${comCount} comentários deste curso
+        </a>
       ` : ''}
     </div>
   `;
