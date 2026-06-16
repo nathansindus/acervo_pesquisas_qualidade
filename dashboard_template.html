@@ -318,7 +318,7 @@ function selectCourse(id){
   renderCourses();
   const ev = EVENTOS.find(e=>e.id===id);
   const pals = PALESTRANTES.filter(p=>p.id_evento===id);
-  var comCount = (COMENTARIOS[String(id)] || []).length;
+  var comCount = COMENTARIOS[String(id)] || 0;
   document.getElementById('detailPanel').innerHTML = `
     <div class="detail-panel">
       <div class="detail-title">${ev.curso}</div>
