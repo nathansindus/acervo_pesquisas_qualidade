@@ -119,8 +119,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     template = template.replace(/\s+integrity="[^"]*"/gi, '').replace(/\s+crossorigin="[^"]*"/gi, '');
 
     const resourceScript = '<script>window.__resources = ' +
-      JSON.stringify(resourceMap).split('</' + 'script>').join('<\\/' + 'script>') +
-      ';</' + 'script>';
+  JSON.stringify(resourceMap).split('</' + 'script>').join('<\\/' + 'script>') +
+  ';</' + 'script>';
+
+const dashScript = '<script src="./data_dash.js?v=' + Date.now() + '"><\/script>';
     // Inject after <head> so the DOCTYPE stays first; prepending the script
     // would push the parser into quirks mode. DOMParser always emits a <head>
     // (synthesizing one if the source HTML omitted it) but may carry
@@ -128,9 +130,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // replace() keeps us clear of $-pattern substitution in resourceScript.
     const headOpen = template.match(/<head[^>]*>/i);
     if (headOpen) {
-      const i = headOpen.index + headOpen[0].length;
-      template = template.slice(0, i) + resourceScript + template.slice(i);
-    }
+  const i = headOpen.index + headOpen[0].length;
+  template = template.slice(0, i) + dashScript + resourceScript + template.slice(i);
+}
 
     // Parse the template and swap the root element. Scripts inserted via
     // DOMParser/replaceWith are inert per spec — re-create each with
