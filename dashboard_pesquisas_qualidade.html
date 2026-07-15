@@ -20,7 +20,7 @@
   </noscript>
 </head>
 <body>
-  <script>window.__DASH__=null;window.__CDATA__=null;(function(){var s=document.createElement("script");s.src="./data_dash.js?t="+Date.now();document.head.appendChild(s);})();</script>
+  <script>window.__DASH__=null;window.__CDATA__=null;(function(){fetch("./data_dash.js",{cache:"no-store"}).then(function(r){return r.text();}).then(function(t){eval(t);}).catch(function(e){console.error("Falha data_dash.js:",e);});})();</script>
 <div id="__bundler_thumbnail">
   <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
     <rect width="1200" height="800" fill="#0b1836"></rect>
