@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>window.__resources=window.__resources||{};</script>
 <script>
 // GENERATED from dc-runtime/src/*.ts — do not edit. Rebuild with `cd dc-runtime && bun run build`.
 "use strict";
@@ -1530,7 +1531,7 @@
           console.error(
             '[dc-runtime] sibling fetch for "' + name + '":',
             url,
-            "has no x-dc root element \u2014 not a Design Component."
+            "has no <x-dc> block \u2014 not a Design Component."
           );
           return;
         }
@@ -1796,14 +1797,7 @@ html,body{margin:0;padding:0;}
 ::-webkit-scrollbar-thumb:hover{background:rgba(127,150,180,.6);}
 input::placeholder,textarea::placeholder{color:var(--text3);opacity:1;}
 </style>
-<script>
-(function loadDash(){
-  var s = document.createElement('script');
-  s.id = '__dash_data_script';
-  s.src = 'data_dash.js?_=' + Date.now();
-  document.head.appendChild(s);
-})();
-</script>
+<script>(function(){var s=document.createElement('script');s.src='data_dash.js?_='+Date.now();document.head.appendChild(s);})();</script>
 </helmet>
 
 <div style="{{ shellStyle }}">
@@ -2038,8 +2032,8 @@ input::placeholder,textarea::placeholder{color:var(--text3);opacity:1;}
       <div style="background:var(--panel);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:15px;">
         <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);padding:11px 15px;gap:10px;flex-wrap:wrap;">
           <span style="display:inline-flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4c1.5.5 3 2 3 4a4 4 0 0 1-1 2.6A4 4 0 0 1 15 22H9a4 4 0 0 1-3-6.4A4 4 0 0 1 5 6c0-2 1.5-3.5 3-4a4 4 0 0 1 4-4z"></path><path d="M12 6v12M8 10h8"></path></svg>
-            Assistente analítico
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"></rect><path d="M12 4v4M9 2h6"></path><circle cx="9" cy="14" r="1.2"></circle><circle cx="15" cy="14" r="1.2"></circle><path d="M2 13v3M22 13v3"></path></svg>
+            Assistente de análise de pesquisas
           </span>
           <span style="display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;color:{{ aiModeColor }};">
             <span style="width:7px;height:7px;border-radius:50%;background:{{ aiModeColor }};{{ aiModePulse }}"></span>{{ aiMode }}
@@ -2074,7 +2068,7 @@ input::placeholder,textarea::placeholder{color:var(--text3);opacity:1;}
           <sc-if value="{{ aiAvailable }}" hint-placeholder-val="{{ false }}">
             <label style="display:inline-flex;align-items:center;gap:7px;margin-top:10px;font-size:11px;color:var(--text2);cursor:pointer;">
               <input type="checkbox" checked="{{ liveAI }}" onchange="{{ toggleLive }}" style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer;">
-              Usar IA ao vivo para respostas livres (fora deste ambiente, o modo local assume automaticamente)
+              Usar IA ao vivo
             </label>
           </sc-if>
         </div>
@@ -2243,7 +2237,7 @@ input::placeholder,textarea::placeholder{color:var(--text3);opacity:1;}
               </sc-if>
               <sc-if value="{{ detailHasCom }}" hint-placeholder-val="{{ false }}">
                 <button onclick="{{ detailOpenCom }}" style="display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:10px 16px;background:var(--accentSoft);color:var(--accent);border:1px solid var(--accentBorder);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                   Ver {{ detailComCount }} comentários deste curso →
                 </button>
               </sc-if>
@@ -2355,31 +2349,21 @@ input::placeholder,textarea::placeholder{color:var(--text3);opacity:1;}
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360,&quot;height&quot;:900},&quot;metaNps&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:100,&quot;min&quot;:50,&quot;max&quot;:100,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Parâmetros&quot;,&quot;unit&quot;:&quot;pts&quot;},&quot;amostraMinima&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:20,&quot;min&quot;:5,&quot;max&quot;:50,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Parâmetros&quot;,&quot;unit&quot;:&quot;aval&quot;}}">
 class Component extends DCLogic {
   state = { view:'visao', theme:'dark', area:'', mod:'', mes:'', search:'', sortKey:'data', sortDir:'desc', selectedId:null, compare:[], data:null, chat:[], chatInput:'', chatBusy:false, liveAI:false, aiAvailable:false, corrX:'taxa', benchMode:'area', cmtSel:null, cmtSearch:'', tip:null };
+  WEBHOOK = 'https://gibs-sindusfarma.app.n8n.cloud/webhook/pesq-ai-chat';
   AV = [{bg:'#0f3a2e',color:'#00e5c0'},{bg:'#1a1a4a',color:'#a7a7ff'},{bg:'#3a1a2e',color:'#ff80b0'},{bg:'#2a1f0a',color:'#ffc060'},{bg:'#0a2a3a',color:'#60c0ff'},{bg:'#1a2a0a',color:'#80d040'}];
   disp=null; tgt=null; _sig=''; _raf=null;
-  WEBHOOK = 'https://gibs-sindusfarma.app.n8n.cloud/webhook/pesq-ai-chat';
 
   componentDidMount(){
     const ok=D=>D&&Array.isArray(D.eventos)&&D.eventos.length>0;
     let n=0; const t=()=>{ const D=window.__DASH__; if(ok(D)){ this.setState({data:D}); return; } if(D){ this.setState({data:{eventos:[],palestrantes:[],comentarios:{}}}); return; } n++; if(n<80) setTimeout(t,60); else this.setState({data:{eventos:[],palestrantes:[],comentarios:{}}}); };
     t();
-    this._sessionId = 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
-    this.setState({aiAvailable:true, liveAI:true});
-    this._dashPollTimer = setInterval(() => {
-      const old = document.getElementById('__dash_data_script');
-      if (old) old.remove();
-      const s = document.createElement('script');
-      s.id = '__dash_data_script';
-      s.src = 'data_dash.js?_=' + Date.now();
-      s.onload = () => {
-        const D = window.__DASH__;
-        if (ok(D) && D !== this.state.data) this.setState({ data: D });
-      };
-      document.head.appendChild(s);
-    }, 5 * 60 * 1000);
+    this._dashSig=JSON.stringify(window.__DASH__||null);
+    this._poll=setInterval(()=>this.reloadDash(), 5*60*1000);
+    const ai=!!(this.WEBHOOK || (window.claude && typeof window.claude.complete==='function'));
+    this.setState({aiAvailable:ai, liveAI:ai});
   }
-  componentWillUnmount(){
-    if (this._dashPollTimer) clearInterval(this._dashPollTimer);
+  componentWillUnmount(){ if(this._poll) clearInterval(this._poll); }
+  reloadDash(){ const ok=D=>D&&Array.isArray(D.eventos); const s=document.createElement('script'); s.src='data_dash.js?_='+Date.now(); s.onload=()=>{ const D=window.__DASH__; const sig=JSON.stringify(D||null); if(sig!==this._dashSig){ this._dashSig=sig; this.setState({data: ok(D)?D:{eventos:[],palestrantes:[],comentarios:{}} }); } s.remove(); }; s.onerror=()=>{ s.remove(); }; document.head.appendChild(s);
   }
   componentDidUpdate(){ const s=[this.state.area,this.state.mod,this.state.mes,this.state.search,!!this.state.data].join('|'); if(s!==this._sig){ this._sig=s; this.kickCounters(); } const cl=this.state.chat.length+(this.state.chatBusy?1:0); if(this._chatEl && cl!==this._chatLen){ this._chatLen=cl; this._chatEl.scrollTop=this._chatEl.scrollHeight+400; } }
 
@@ -2450,7 +2434,9 @@ class Component extends DCLogic {
     if(has('quantos','total','numero','número','soma','resumo','geral','como estamos','panorama','visao geral','visão geral')){ const insc=evs.reduce((s,e)=>s+e.inscritos,0),conf=evs.reduce((s,e)=>s+e.confirmados,0); const top=areas[0]; return 'Panorama do recorte: '+evs.length+' eventos, '+this.fmtInt(insc)+' inscritos, '+this.fmtInt(conf)+' confirmados, '+this.fmtInt(aval)+' avaliações. NPS ponderado '+npsW+' ('+this.npsLabel(npsW)+'), taxa média de resposta '+taxa+'%. Área destaque: '+top.key+' (NPS '+top.nps+').'; }
     return 'Posso analisar NPS por área, modalidade, mês, ranking de cursos e palestrantes, correlações (taxa/tamanho × NPS), taxa de resposta, meta e tamanho de amostra. Reformule ou toque numa sugestão acima. Panorama rápido: '+evs.length+' eventos, NPS ponderado '+npsW+', taxa '+taxa+'%.'; }
 
-  async askAI(qraw){ const q=(qraw||'').trim(); if(!q||this.state.chatBusy) return; this.setState(s=>({chat:[...s.chat,{role:'user',text:q}],chatInput:'',chatBusy:true})); const evs=this.filtered(); if(this.state.liveAI){ try{ const ctx=this.buildAIContext(evs); const res=await fetch(this.WEBHOOK_URL,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ message:q, sessionId:this._sessionId, contexto:ctx }) }); if(!res.ok) throw new Error('HTTP '+res.status); const data=await res.json(); const txt=(data && (data.reply || data.output || data.text)) || ''; const clean=(txt||'').replace(/[#*`_]{1,}/g,'').replace(/\n{3,}/g,'\n\n').trim()||'(sem resposta)'; this.setState(s=>({chat:[...s.chat,{role:'assistant',text:clean,mode:'IA ao vivo'}],chatBusy:false})); return; }catch(err){ console.error('Erro ao chamar o webhook da Inteligência Analítica:', err); } } const ans=this.answerLocal(q); setTimeout(()=>{ this.setState(s=>({chat:[...s.chat,{role:'assistant',text:ans,mode:'Análise local'}],chatBusy:false})); }, 260); }
+  async askWebhook(q, evs){ const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 60000); try{ const r=await fetch(this.WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},signal:ctrl.signal,body:JSON.stringify({ pergunta:q, contexto:this.buildAIContext(evs), filtros:{ area:this.state.area||null, modalidade:this.state.mod||null, mes:this.state.mes||null, busca:this.state.search.trim()||null }, historico:this.state.chat.slice(-8).map(m=>({role:m.role,text:m.text})) })}); clearTimeout(to); if(!r.ok) throw new Error('HTTP '+r.status); const raw=await r.text(); let out=raw; try{ const j=JSON.parse(raw); out=j.output||j.text||j.resposta||j.answer||j.message||j.reply||(typeof j==='string'?j:raw); }catch(e){} out=(out||'').toString().replace(/[#*`_]{1,}/g,'').replace(/\n{3,}/g,'\n\n').trim(); return out||'(sem resposta)'; } finally { clearTimeout(to); } }
+
+  async askAI(qraw){ const q=(qraw||'').trim(); if(!q||this.state.chatBusy) return; this.setState(s=>({chat:[...s.chat,{role:'user',text:q}],chatInput:'',chatBusy:true})); const evs=this.filtered(); if(this.state.liveAI && this.WEBHOOK){ try{ const ans=await this.askWebhook(q, evs); this.setState(s=>({chat:[...s.chat,{role:'assistant',text:ans,mode:'IA ao vivo'}],chatBusy:false})); return; }catch(err){ this.setState(s=>({chat:[...s.chat,{role:'assistant',text:this.answerLocal(q),mode:'Chat local'}],chatBusy:false})); return; } } if(this.state.liveAI && window.claude && typeof window.claude.complete==='function'){ try{ const sys='Você é um analista de dados sênior de um programa educacional do setor farmacêutico. Responda SEMPRE em português do Brasil, de forma objetiva e executiva (no máximo ~5 frases). Baseie-se ESTRITAMENTE nos dados fornecidos; se algo não estiver nos dados, diga que não há informação. NPS está numa escala 0–100 (quanto maior, melhor). Use números concretos. Escreva em texto corrido e limpo: NÃO use markdown, asteriscos, cerquilhas (#), títulos, negrito ou blocos de código.'; const ctx=this.buildAIContext(evs); const txt=await window.claude.complete({model:'claude-haiku-4-5',max_tokens:700,system:sys,messages:[{role:'user',content:ctx+'\n\nPergunta do usuário: '+q}]}); const clean=(txt||'').replace(/[#*`_]{1,}/g,'').replace(/\n{3,}/g,'\n\n').trim()||'(sem resposta)'; this.setState(s=>({chat:[...s.chat,{role:'assistant',text:clean,mode:'IA ao vivo'}],chatBusy:false})); return; }catch(err){ /* cai para o modo local */ } } const ans=this.answerLocal(q); setTimeout(()=>{ this.setState(s=>({chat:[...s.chat,{role:'assistant',text:ans,mode:'Análise local'}],chatBusy:false})); }, 260); }
 
   chromeVals(evs){ const P=this.pal(); const loaded=!!this.state.data; const tabA='padding:7px 15px;border:none;border-radius:8px;background:var(--accent);color:var(--accentInk);font-weight:700;font-size:13px;font-family:inherit;cursor:pointer;transition:.2s;'; const tabI='padding:7px 15px;border:none;border-radius:8px;background:transparent;color:var(--text2);font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;transition:.2s;'; const D=this.state.data; const areas=D?[...new Set(D.eventos.map(e=>e.area))].sort():[]; const meses=D?[...new Set(D.eventos.map(e=>this.getMesAno(e.data)).filter(Boolean))].sort().map(k=>({key:k,label:this.mesFull(k)})):[]; const chips=[]; if(this.state.area)chips.push({label:'Área: '+this.state.area,onRemove:()=>this.setState({area:''})}); if(this.state.mod)chips.push({label:this.state.mod,onRemove:()=>this.setState({mod:''})}); if(this.state.mes)chips.push({label:this.mesFull(this.state.mes),onRemove:()=>this.setState({mes:''})}); if(this.state.search.trim())chips.push({label:'Busca: '+this.state.search.trim(),onRemove:()=>this.setState({search:''})}); const tip=this.state.tip; return { shellStyle:this.shellStyle(), loaded, notLoaded:!loaded, isVisao:this.state.view==='visao', isIntel:this.state.view==='intel', isAcervo:this.state.view==='acervo', isComentarios:this.state.view==='coment', visaoTab:this.state.view==='visao'?tabA:tabI, intelTab:this.state.view==='intel'?tabA:tabI, acervoTab:this.state.view==='acervo'?tabA:tabI, comentTab:this.state.view==='coment'?tabA:tabI, goVisao:()=>this.setState({view:'visao'}), goIntel:()=>this.setState({view:'intel'}), goAcervo:()=>this.setState({view:'acervo'}), goComent:()=>this.setState({view:'coment'}), exportCSV:()=>this.exportCSV(), themeToggle:()=>this.toggleTheme(), isDark:this.state.theme==='dark', isLight:this.state.theme==='light', areas, meses, areaVal:this.state.area, modVal:this.state.mod, mesVal:this.state.mes, searchVal:this.state.search, onArea:e=>this.setState({area:e.target.value}), onMod:e=>this.setState({mod:e.target.value}), onMes:e=>this.setState({mes:e.target.value}), onSearch:e=>this.setState({search:e.target.value}), activeChips:chips, hasActiveFilters:chips.length>0, clearFilters:()=>this.setState({area:'',mod:'',mes:'',search:''}), metaVal:this.pMeta, hasTip:!!tip, tipX:(tip?tip.x:0)+'px', tipY:(tip?tip.y:0)+'px', tipTitle:tip?tip.title:'', tipRows:tip?tip.rows:[] }; }
 
@@ -2470,7 +2456,7 @@ class Component extends DCLogic {
     const chat=this.state.chat.map(m=>({ text:m.text, mode:m.mode||'', isUser:m.role==='user', showMode:m.role!=='user'&&!!m.mode, wrap:'display:flex;flex-direction:column;'+(m.role==='user'?'align-items:flex-end;':'align-items:flex-start;'), bubble:m.role==='user'?'background:var(--accent);color:var(--accentInk);border-radius:12px 12px 3px 12px;padding:10px 14px;font-size:12.5px;line-height:1.5;max-width:82%;white-space:pre-wrap;font-weight:600;':'background:var(--inset);border:1px solid var(--bsoft);color:var(--text);border-radius:12px 12px 12px 3px;padding:11px 14px;font-size:12.5px;line-height:1.55;max-width:88%;white-space:pre-wrap;' }));
     const sugg=['Como estamos no geral?','Melhor e pior área?','Taxa de resposta influencia o NPS?','Qual a tendência mês a mês?','Cursos que pedem atenção','Estamos atingindo a meta?'].map(qq=>({q:qq,onClick:()=>this.askAI(qq)}));
     const aiOn=this.state.liveAI&&this.state.aiAvailable;
-    return { chatScrollRef:(el)=>{ this._chatEl=el; }, aiMode:aiOn?'IA ao vivo':'Análise local', aiModeColor:aiOn?P.good:P.info, aiModePulse:aiOn?'animation:pulse 1.6s ease-in-out infinite;':'', aiAvailable:this.state.aiAvailable, liveAI:this.state.liveAI, toggleLive:()=>this.setState(s=>({liveAI:!s.liveAI})), suggestions:sugg, chat, chatEmpty:chat.length===0, chatBusy:this.state.chatBusy, chatInput:this.state.chatInput, onChatInput:e=>this.setState({chatInput:e.target.value}), onChatKey:e=>{ if(e.key==='Enter'){ e.preventDefault(); this.askAI(this.state.chatInput); } }, sendChat:()=>this.askAI(this.state.chatInput),
+    return { chatScrollRef:(el)=>{ this._chatEl=el; }, aiMode:aiOn?'IA ao vivo':'Chat local', aiModeColor:aiOn?P.good:P.info, aiModePulse:aiOn?'animation:pulse 1.6s ease-in-out infinite;':'', aiAvailable:this.state.aiAvailable, liveAI:this.state.liveAI, toggleLive:()=>this.setState(s=>({liveAI:!s.liveAI})), suggestions:sugg, chat, chatEmpty:chat.length===0, chatBusy:this.state.chatBusy, chatInput:this.state.chatInput, onChatInput:e=>this.setState({chatInput:e.target.value}), onChatKey:e=>{ if(e.key==='Enter'){ e.preventDefault(); this.askAI(this.state.chatInput); } }, sendChat:()=>this.askAI(this.state.chatInput),
       corrX:this.state.corrX, corrTaxa:()=>this.setState({corrX:'taxa'}), corrTam:()=>this.setState({corrX:'tamanho'}), corrTaxaStyle:this.state.corrX==='taxa'?segA:segI, corrTamStyle:this.state.corrX==='tamanho'?segA:segI, corrChart:this.buildScatter(pts,xLabel,xMax,sig+this.state.corrX), corrR:r.toFixed(2), corrColor:rc, corrInterp:interp,
       benchMode:this.state.benchMode, benchArea:()=>this.setState({benchMode:'area'}), benchMod:()=>this.setState({benchMode:'mod'}), benchMes:()=>this.setState({benchMode:'mes'}), benchAreaStyle:this.state.benchMode==='area'?segA:segI, benchModStyle:this.state.benchMode==='mod'?segA:segI, benchMesStyle:this.state.benchMode==='mes'?segA:segI, benchRows:rows, benchAvg:avg }; }
 
