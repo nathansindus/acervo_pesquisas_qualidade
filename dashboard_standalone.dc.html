@@ -1,0 +1,2483 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+// GENERATED from dc-runtime/src/*.ts — do not edit. Rebuild with `cd dc-runtime && bun run build`.
+"use strict";
+(() => {
+  var __defProp = Object.defineProperty;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+
+  // src/react.ts
+  function getReact() {
+    const R = window.React;
+    if (!R) throw new Error("dc-runtime: window.React is not available yet");
+    return R;
+  }
+  function getReactDOM() {
+    const RD = window.ReactDOM;
+    if (!RD) throw new Error("dc-runtime: window.ReactDOM is not available yet");
+    return RD;
+  }
+  var h = ((...args) => getReact().createElement(
+    ...args
+  ));
+
+  // src/parse.ts
+  function parseDcDocument(doc) {
+    const dc = doc.querySelector("x-dc");
+    if (!dc) return null;
+    const scriptEl = doc.querySelector("script[data-dc-script]");
+    const { props, preview } = parseDataProps(
+      scriptEl?.getAttribute("data-props") ?? null
+    );
+    return {
+      template: dc.innerHTML,
+      js: scriptEl ? scriptEl.textContent || "" : "",
+      props,
+      preview
+    };
+  }
+  function parseDcText(src) {
+    const openMatch = /<x-dc(?:\s[^>]*)?>/.exec(src);
+    if (!openMatch) return null;
+    const close = src.lastIndexOf("</x-dc>");
+    if (close === -1 || close < openMatch.index) return null;
+    const template = src.slice(openMatch.index + openMatch[0].length, close);
+    const doc = new DOMParser().parseFromString(src, "text/html");
+    const scriptEl = doc.querySelector("script[data-dc-script]");
+    const { props, preview } = parseDataProps(
+      scriptEl?.getAttribute("data-props") ?? null
+    );
+    return {
+      template,
+      js: scriptEl ? scriptEl.textContent || "" : "",
+      props,
+      preview
+    };
+  }
+  function parseDataProps(raw) {
+    if (!raw) return { props: null, preview: null };
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return { props: null, preview: null };
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { props: null, preview: null };
+    }
+    const obj = parsed;
+    const preview = obj.$preview && typeof obj.$preview === "object" ? obj.$preview : null;
+    const rest = {};
+    for (const k of Object.keys(obj)) {
+      if (k[0] !== "$") rest[k] = obj[k];
+    }
+    return { props: Object.keys(rest).length ? rest : null, preview };
+  }
+  function dcNameFromPath(pathname) {
+    let p = pathname || "";
+    try {
+      p = decodeURIComponent(p);
+    } catch {
+    }
+    const base = p.split("/").pop() || "Root";
+    return base.replace(/\.dc\.html$/, "").replace(/\.html?$/, "") || "Root";
+  }
+
+  // src/boot.ts
+  var BASE_CSS = `
+    .sc-placeholder{background:color-mix(in srgb,currentColor 8%,transparent);
+      border:1px solid color-mix(in srgb,currentColor 50%,transparent);
+      border-radius:2px;box-sizing:border-box;overflow:hidden}
+    @keyframes sc-shine{0%{background-position:100% 50%}100%{background-position:0% 50%}}
+    html.sc-dc-streaming .sc-placeholder,
+    html.sc-dc-streaming .sc-interp.sc-missing{position:relative;
+      background:color-mix(in srgb,currentColor 5%,transparent);
+      border-color:transparent}
+    html.sc-dc-streaming .sc-placeholder::before,
+    html.sc-dc-streaming .sc-interp.sc-missing::before{content:'';
+      position:absolute;inset:0;pointer-events:none;
+      background:linear-gradient(90deg,rgba(217,119,87,0) 25%,rgba(247,225,211,.95) 37%,rgba(217,119,87,0) 63%);
+      background-size:400% 100%;animation:sc-shine 1.4s ease infinite}
+    html.sc-dc-streaming .sc-placeholder:nth-child(n+9 of .sc-placeholder)::before,
+    html.sc-dc-streaming .sc-interp.sc-missing:nth-child(n+9 of .sc-interp.sc-missing)::before{animation:none;
+      background:color-mix(in srgb,currentColor 8%,transparent)}
+    .sc-placeholder-error{padding:4px 8px;font:11px/1.4 ui-monospace,monospace;
+      color:color-mix(in srgb,currentColor 70%,transparent);word-break:break-word}
+    .sc-interp.sc-missing{display:inline-block;width:2em;height:1em;overflow:hidden;
+      vertical-align:text-bottom;background:rgba(255,255,255,.3);border:1px solid rgba(0,0,0,.5);
+      border-radius:2px;box-sizing:border-box;color:transparent;
+      user-select:none}
+    .sc-interp.sc-unresolved{font-family:ui-monospace,monospace;font-size:.85em;
+      color:color-mix(in srgb,currentColor 50%,transparent);
+      background:color-mix(in srgb,currentColor 10%,transparent);border-radius:3px;
+      padding:0 3px}
+    .sc-host.sc-has-error{position:relative}
+    .sc-logic-error{position:absolute;top:8px;left:8px;z-index:2147483647;max-width:60ch;
+      padding:6px 10px;background:#b00020;color:#fff;font:12px/1.4 ui-monospace,monospace;
+      border-radius:4px;white-space:pre-wrap;pointer-events:none}
+    /* Mirrors PRINT_BASELINE_CSS in apps/web deck-stage-export.ts \u2014 keep both
+       in sync until dc-runtime regains a build step. */
+    @media print {
+      @page { margin: 0.5cm; }
+      figure, table { break-inside: avoid; }
+      #dc-root, #dc-root > .sc-host { height: auto; }
+      *, *::before, *::after {
+        print-color-adjust: exact; -webkit-print-color-adjust: exact;
+        backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+        animation-delay: -99s !important; animation-duration: .001s !important;
+        animation-iteration-count: 1 !important; animation-fill-mode: both !important;
+        animation-play-state: running !important; transition-duration: 0s !important;
+      }
+    }
+  `;
+  var FULL_PAGE_CSS = "html,body{height:100%;margin:0}#dc-root,#dc-root>.sc-host{height:100%}";
+  function rootNameForDocument(doc, loc) {
+    let bootPath = loc.pathname || "";
+    if (!/\.dc\.html?$/i.test(safeDecode(bootPath))) {
+      try {
+        bootPath = new URL(doc.baseURI || "/").pathname;
+      } catch {
+      }
+    }
+    return dcNameFromPath(bootPath);
+  }
+  function safeDecode(s) {
+    try {
+      return decodeURIComponent(s);
+    } catch {
+      return s;
+    }
+  }
+  function boot(runtime, doc = document) {
+    const parsed = parseDcDocument(doc);
+    if (!parsed) return null;
+    const React = getReact();
+    const rootName = rootNameForDocument(doc, location);
+    runtime.markFetched(rootName);
+    runtime.setRootName(rootName);
+    runtime.adoptParsed(rootName, parsed);
+    if (!window.__resources) {
+      fetch(location.href).then((res) => res.ok ? res.text() : "").then((t) => {
+        const raw = t ? parseDcText(t) : null;
+        if (raw?.template) runtime.updateHtml(rootName, raw.template);
+      }).catch(() => {
+      });
+    }
+    const dc = doc.querySelector("x-dc");
+    const hostEl = doc.createElement("div");
+    hostEl.id = "dc-root";
+    dc.replaceWith(hostEl);
+    if (!parsed.preview) {
+      const s = doc.createElement("style");
+      s.textContent = FULL_PAGE_CSS;
+      doc.head.appendChild(s);
+    }
+    const Root = runtime.getDC(rootName);
+    const entry = runtime.registry.get(rootName);
+    function StandaloneRoot() {
+      const [, setTick] = React.useState(0);
+      React.useEffect(() => {
+        const sub = () => setTick((n) => n + 1);
+        entry.subs.add(sub);
+        return () => {
+          entry.subs.delete(sub);
+        };
+      }, []);
+      const defaults = React.useMemo(() => {
+        const d = {};
+        for (const k in entry.propsMeta || {}) {
+          const v = entry.propsMeta?.[k]?.default;
+          if (v !== void 0) d[k] = v;
+        }
+        return d;
+      }, [entry.propsMeta]);
+      return h(Root, { ...defaults, ...entry.propOverrides || {} });
+    }
+    const ReactDOM = getReactDOM();
+    if (ReactDOM.createRoot)
+      ReactDOM.createRoot(hostEl).render(h(StandaloneRoot));
+    else ReactDOM.render(h(StandaloneRoot), hostEl);
+    return rootName;
+  }
+
+  // src/expr.ts
+  var IDENT_RE = /^[A-Za-z_$][A-Za-z0-9_$]*/;
+  var NUMBER_RE = /^-?\d+(\.\d+)?$/;
+  function resolve(vals, src) {
+    const expr = String(src).trim();
+    if (!expr) return void 0;
+    if (expr[0] === "(" && expr[expr.length - 1] === ")" && parensWrapWhole(expr)) {
+      return resolve(vals, expr.slice(1, -1));
+    }
+    const eq = findTopLevelEquality(expr);
+    if (eq) {
+      const lv = resolve(vals, expr.slice(0, eq.index));
+      const rv = resolve(vals, expr.slice(eq.index + eq.op.length));
+      switch (eq.op) {
+        case "===":
+          return lv === rv;
+        case "!==":
+          return lv !== rv;
+        case "==":
+          return lv == rv;
+        default:
+          return lv != rv;
+      }
+    }
+    if (expr[0] === "!") return !resolve(vals, expr.slice(1));
+    if (expr === "true") return true;
+    if (expr === "false") return false;
+    if (expr === "null") return null;
+    if (expr === "undefined") return void 0;
+    if (NUMBER_RE.test(expr)) return Number(expr);
+    if (expr.length >= 2 && (expr[0] === '"' || expr[0] === "'") && expr[expr.length - 1] === expr[0]) {
+      return expr.slice(1, -1);
+    }
+    return resolvePath(vals, expr);
+  }
+  function parensWrapWhole(expr) {
+    let depth = 0;
+    for (let i = 0; i < expr.length - 1; i++) {
+      if (expr[i] === "(") depth++;
+      else if (expr[i] === ")") {
+        depth--;
+        if (depth === 0) return false;
+      }
+    }
+    return true;
+  }
+  function findTopLevelEquality(expr) {
+    let depth = 0;
+    for (let i = 0; i < expr.length; i++) {
+      const c = expr[i];
+      if (c === "[" || c === "(") depth++;
+      else if (c === "]" || c === ")") depth--;
+      else if (depth === 0 && (c === "=" || c === "!") && expr[i + 1] === "=") {
+        if (i > 0 && (expr[i - 1] === "=" || expr[i - 1] === "!")) continue;
+        if (!expr.slice(0, i).trim()) continue;
+        const op = expr[i + 2] === "=" ? c + "==" : c + "=";
+        return { index: i, op };
+      }
+    }
+    return null;
+  }
+  function resolvePath(vals, expr) {
+    const head = expr.match(IDENT_RE);
+    if (!head) return void 0;
+    let cur = vals == null ? void 0 : vals[head[0]];
+    let i = head[0].length;
+    while (i < expr.length) {
+      if (expr[i] === ".") {
+        const m = expr.slice(i + 1).match(IDENT_RE) || expr.slice(i + 1).match(/^\d+/);
+        if (!m) return void 0;
+        cur = cur == null ? void 0 : cur[m[0]];
+        i += 1 + m[0].length;
+      } else if (expr[i] === "[") {
+        let depth = 1;
+        let j = i + 1;
+        while (j < expr.length && depth > 0) {
+          if (expr[j] === "[") depth++;
+          else if (expr[j] === "]") {
+            depth--;
+            if (depth === 0) break;
+          }
+          j++;
+        }
+        if (depth !== 0) return void 0;
+        const key = resolve(vals, expr.slice(i + 1, j));
+        cur = cur == null ? void 0 : cur[key];
+        i = j + 1;
+      } else {
+        return void 0;
+      }
+    }
+    return cur;
+  }
+
+  // src/encode.ts
+  var CAMEL_ATTR = "sc-camel-";
+  var INLINE_TEXT_TAGS = new Set(
+    "a abbr b bdi bdo br cite code del dfn em i ins kbd mark q s samp small span strike strong sub sup u var wbr".split(
+      " "
+    )
+  );
+  var RAW_WRAP = {
+    select: "sc-raw-select",
+    table: "sc-raw-table",
+    tbody: "sc-raw-tbody",
+    thead: "sc-raw-thead",
+    tfoot: "sc-raw-tfoot",
+    tr: "sc-raw-tr",
+    td: "sc-raw-td",
+    th: "sc-raw-th",
+    caption: "sc-raw-caption"
+  };
+  var RAW_UNWRAP = Object.fromEntries(
+    Object.entries(RAW_WRAP).map(([k, v]) => [v, k])
+  );
+  var EVENT_MAP = {
+    onclick: "onClick",
+    onchange: "onChange",
+    oninput: "onInput",
+    onsubmit: "onSubmit",
+    onkeydown: "onKeyDown",
+    onkeyup: "onKeyUp",
+    onkeypress: "onKeyPress",
+    onmousedown: "onMouseDown",
+    onmouseup: "onMouseUp",
+    onmouseenter: "onMouseEnter",
+    onmouseleave: "onMouseLeave",
+    onfocus: "onFocus",
+    onblur: "onBlur",
+    ondoubleclick: "onDoubleClick",
+    oncontextmenu: "onContextMenu",
+    onmousemove: "onMouseMove",
+    onmouseover: "onMouseOver",
+    onmouseout: "onMouseOut",
+    onpointerdown: "onPointerDown",
+    onpointerup: "onPointerUp",
+    onpointermove: "onPointerMove",
+    onpointerenter: "onPointerEnter",
+    onpointerleave: "onPointerLeave",
+    onpointercancel: "onPointerCancel",
+    onpointerover: "onPointerOver",
+    onpointerout: "onPointerOut",
+    ongotpointercapture: "onGotPointerCapture",
+    onlostpointercapture: "onLostPointerCapture",
+    ontouchstart: "onTouchStart",
+    ontouchend: "onTouchEnd",
+    ontouchmove: "onTouchMove",
+    ontouchcancel: "onTouchCancel",
+    ondragstart: "onDragStart",
+    ondragend: "onDragEnd",
+    ondragenter: "onDragEnter",
+    ondragleave: "onDragLeave",
+    ondragover: "onDragOver",
+    onanimationstart: "onAnimationStart",
+    onanimationend: "onAnimationEnd",
+    onanimationiteration: "onAnimationIteration",
+    ontransitionend: "onTransitionEnd"
+  };
+  var ATTRS = `(?:[^>"']|"[^"]*"|'[^']*')*`;
+  var IMPORT_SELF_CLOSE_RE = new RegExp(
+    "<(x-import|dc-import)(" + ATTRS + ")/>",
+    "gi"
+  );
+  var CAMEL_ATTR_RE = /(\s)([a-z]+[A-Z][A-Za-z0-9]*)(\s*=)/g;
+  function encodeCamelAttrs(html) {
+    return html.replace(
+      CAMEL_ATTR_RE,
+      (_, sp, name, eq) => sp + CAMEL_ATTR + name.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase()) + eq
+    );
+  }
+  function encodeCase(html) {
+    html = html.replace(
+      IMPORT_SELF_CLOSE_RE,
+      (_, t, a) => "<" + t + a + "></" + t + ">"
+    );
+    html = html.replace(/<helmet(\s|>)/gi, "<sc-helmet$1");
+    html = html.replace(/<\/helmet\s*>/gi, "</sc-helmet>");
+    html = encodeCamelAttrs(html);
+    for (const [real, alias] of Object.entries(RAW_WRAP)) {
+      html = html.replace(
+        new RegExp("(</?)" + real + "(?=[\\s>])", "gi"),
+        "$1" + alias
+      );
+    }
+    return html;
+  }
+  function kebabToCamel(s) {
+    return s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+  }
+  function cssToObj(css) {
+    const o = {};
+    for (const decl of css.split(";")) {
+      const i = decl.indexOf(":");
+      if (i < 0) continue;
+      const prop = decl.slice(0, i).trim();
+      o[prop.startsWith("--") ? prop : kebabToCamel(prop)] = decl.slice(i + 1).trim();
+    }
+    return o;
+  }
+  function compileAttr(raw) {
+    const whole = raw.match(/^\s*\{\{([\s\S]+?)\}\}\s*$/);
+    if (whole) {
+      const path = whole[1];
+      return (vals) => resolve(vals, path);
+    }
+    if (raw.includes("{{")) {
+      const parts = raw.split(/\{\{([\s\S]+?)\}\}/g);
+      return (vals) => parts.map((s, i) => i & 1 ? resolve(vals, s) ?? "" : s).join("");
+    }
+    return () => raw;
+  }
+
+  // src/compile.ts
+  function collectProps(node, kind, host) {
+    const propGetters = [];
+    const pseudoClasses = [];
+    let hintSize = null;
+    for (const { name, value } of [...node.attributes]) {
+      if (name === "sc-name" || name === "data-dc-tpl") continue;
+      let key = name;
+      if (key.startsWith(CAMEL_ATTR))
+        key = kebabToCamel(key.slice(CAMEL_ATTR.length));
+      if (key === "hint-size") {
+        hintSize = value;
+        continue;
+      }
+      if (key.startsWith("style-")) {
+        pseudoClasses.push(host.pseudoClass(key.slice(6), value));
+        continue;
+      }
+      if (kind !== "dom") {
+        if (key.includes("-") && !(kind === "x-import" && (key.startsWith("aria-") || key.startsWith("data-"))))
+          key = kebabToCamel(key);
+      } else {
+        if (key === "class") key = "className";
+        else if (key === "for") key = "htmlFor";
+        else if (key.startsWith("on"))
+          key = EVENT_MAP[key] || "on" + key[2].toUpperCase() + key.slice(3);
+      }
+      propGetters.push([key, compileAttr(value)]);
+    }
+    return { propGetters, pseudoClasses, hintSize };
+  }
+  var HOST_STYLE_PROPS = /* @__PURE__ */ new Set([
+    "position",
+    "left",
+    "right",
+    "top",
+    "bottom",
+    "inset",
+    "width",
+    "height",
+    "z-index",
+    "transform"
+  ]);
+  function hostPositionStyle(style) {
+    const all = typeof style === "string" ? cssToObj(style) : style != null && typeof style === "object" ? style : null;
+    if (!all) return void 0;
+    const out = {};
+    for (const [k, v] of Object.entries(all)) {
+      const kebab = k.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+      if (HOST_STYLE_PROPS.has(kebab)) out[k] = v;
+    }
+    return Object.keys(out).length ? out : void 0;
+  }
+  function compileTemplate(html, host) {
+    const tpl = document.createElement("template");
+    //! nosemgrep: direct-inner-html-assignment
+    tpl.innerHTML = encodeCase(html);
+    let tplN = 0;
+    (function stamp(node) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        node.setAttribute("data-dc-tpl", String(tplN++));
+      }
+      for (const c of node.childNodes) stamp(c);
+    })(tpl.content);
+    const builders = walkChildren(tpl.content, host);
+    const render = ((vals, ctx) => builders.map((b, i) => b(vals || {}, ctx, i)));
+    render.__annotated = tpl.innerHTML;
+    return render;
+  }
+  function walkChildren(node, host) {
+    return [...node.childNodes].map((c) => walk(c, host)).filter((b) => b != null);
+  }
+  function walk(node, host) {
+    if (node.nodeType === Node.TEXT_NODE) return walkText(node);
+    if (node.nodeType !== Node.ELEMENT_NODE) return null;
+    const el = node;
+    const tag = el.tagName.toLowerCase();
+    if (tag === "sc-for") return walkFor(el, host);
+    if (tag === "sc-if") return walkIf(el, host);
+    if (tag === "x-import") return walkXImport(el, host);
+    if (tag === "sc-helmet") return host.helmet(el);
+    if (tag === "dc-import") return walkComponent(el, host);
+    return walkElement(el, host);
+  }
+  var warnedHoles = /* @__PURE__ */ new Set();
+  function warnUnresolved(ctx, what) {
+    const key = (ctx?.__name || "?") + "\0" + what;
+    if (warnedHoles.has(key)) return;
+    warnedHoles.add(key);
+    console.warn("[dc-runtime] " + (ctx?.__name || "template") + ": " + what);
+  }
+  function walkText(node) {
+    const txt = node.nodeValue ?? "";
+    if (!txt.includes("{{")) {
+      if (!txt.trim() && !txt.includes(" ")) return null;
+      return () => txt;
+    }
+    const parts = txt.split(/\{\{([\s\S]+?)\}\}/g);
+    return (vals, ctx, key) => h(
+      getReact().Fragment,
+      { key },
+      ...parts.map((p, i) => {
+        if (!(i & 1)) return p;
+        const v = resolve(vals, p);
+        if (v === void 0) {
+          if (!ctx?.__streamingNow) {
+            if (document.body?.hasAttribute("data-dc-editor-on")) {
+              return h(
+                "span",
+                { key: i, className: "sc-interp sc-unresolved" },
+                "{{ " + p.trim() + " }}"
+              );
+            }
+            warnUnresolved(
+              ctx,
+              "{{ " + p.trim() + " }} never resolved \u2014 rendered as empty"
+            );
+            return null;
+          }
+          return h(
+            "span",
+            { key: i, className: "sc-interp sc-missing" },
+            p.trim()
+          );
+        }
+        if (getReact().isValidElement(v) || Array.isArray(v)) {
+          return h(getReact().Fragment, { key: i }, v);
+        }
+        if (v === null || typeof v === "boolean") return null;
+        return h("span", { key: i, className: "sc-interp" }, String(v));
+      })
+    );
+  }
+  function walkFor(el, host) {
+    const listGet = compileAttr(el.getAttribute("list") || "");
+    const asName = el.getAttribute("as") || "item";
+    const hintN = parseInt(el.getAttribute("hint-placeholder-count") || "0", 10);
+    const kids = walkChildren(el, host);
+    const listSrc = el.getAttribute("list") || "";
+    return (vals, ctx, key) => {
+      let list = listGet(vals);
+      if (!Array.isArray(list)) {
+        if (!ctx?.__streamingNow) {
+          if (list !== void 0 && list !== null) {
+            warnUnresolved(
+              ctx,
+              'sc-for list="' + listSrc + '" is not an array (' + typeof list + ")"
+            );
+          }
+          list = [];
+        } else {
+          list = hintN > 0 ? Array(hintN).fill(void 0) : [];
+        }
+      }
+      return h(
+        getReact().Fragment,
+        { key },
+        list.map((item, i) => {
+          const sub = { ...vals, [asName]: item, $index: i };
+          return h(
+            getReact().Fragment,
+            { key: i },
+            kids.map((b, j) => b(sub, ctx, j))
+          );
+        })
+      );
+    };
+  }
+  function walkIf(el, host) {
+    const valGet = compileAttr(el.getAttribute("value") || "");
+    const hintRaw = el.getAttribute("hint-placeholder-val");
+    const hintGet = hintRaw != null ? compileAttr(hintRaw) : null;
+    const kids = walkChildren(el, host);
+    return (vals, ctx, key) => {
+      let v = valGet(vals);
+      if (v === void 0 && hintGet && ctx?.__streamingNow) v = hintGet(vals);
+      return v ? h(
+        getReact().Fragment,
+        { key },
+        kids.map((b, j) => b(vals, ctx, j))
+      ) : null;
+    };
+  }
+  function walkComponent(el, host) {
+    const name = el.getAttribute("name") || el.getAttribute("component") || "";
+    el.removeAttribute("name");
+    el.removeAttribute("component");
+    const tplId = el.getAttribute("data-dc-tpl");
+    const styleRaw = el.getAttribute("style");
+    el.removeAttribute("style");
+    const styleGet = styleRaw != null ? compileAttr(styleRaw) : null;
+    const { propGetters, hintSize } = collectProps(el, "dc-import", host);
+    const kids = walkChildren(el, host);
+    return (vals, ctx, key) => {
+      const props = {
+        key,
+        __hintSize: hintSize,
+        __tplId: tplId,
+        __hostStyle: styleGet ? hostPositionStyle(styleGet(vals)) : void 0
+      };
+      for (const [k, g] of propGetters) {
+        const v = g(vals);
+        if (k === "dcProps") {
+          if (v && typeof v === "object") Object.assign(props, v);
+          continue;
+        }
+        props[k] = v;
+      }
+      if (kids.length) props.children = kids.map((b, j) => b(vals, ctx, j));
+      return h(host.component(name), props);
+    };
+  }
+  function walkXImport(el, host) {
+    const globalNameGet = compileAttr(
+      el.getAttribute("component-from-global-scope") || ""
+    );
+    const exportNameGet = compileAttr(
+      el.getAttribute("component") || el.getAttribute("name") || ""
+    );
+    const fromRaw = el.getAttribute("from") || (el.getAttribute("component-from-global-scope") ? "" : el.getAttribute("src") || el.getAttribute("import") || "");
+    const urls = fromRaw.trim() ? fromRaw.trim().split(/\s+/) : [];
+    const url = urls.length ? urls[urls.length - 1] : "";
+    const kindOf = (u) => /\.(jsx|tsx)(\?|#|$)/i.test(u) ? "jsx" : "js";
+    const tplId = el.getAttribute("data-dc-tpl");
+    const styleRaw = el.getAttribute("style");
+    el.removeAttribute("style");
+    const styleGet = styleRaw != null ? compileAttr(styleRaw) : null;
+    const wrap = tplId != null || styleGet != null;
+    const { propGetters, hintSize } = collectProps(el, "x-import", host);
+    const hasContent = el.children.length > 0 || !!(el.textContent || "").trim();
+    const kids = hasContent ? walkChildren(el, host) : [];
+    const urlBindable = fromRaw.includes("{{");
+    if (urls.length && !urlBindable) {
+      let prev;
+      for (const u of urls) prev = host.loadExternal(kindOf(u), u, prev);
+    }
+    const evalName = (g, vals) => {
+      const v = g(vals);
+      const s = v == null ? "" : String(v);
+      return s.includes("{{") ? "" : s;
+    };
+    return (vals, ctx, key) => {
+      const globalName = evalName(globalNameGet, vals);
+      const name = globalName || evalName(exportNameGet, vals);
+      const C = !name || urlBindable ? null : globalName ? host.resolveExternalGlobal(url, globalName) : host.resolveExternal(url, name);
+      const hostStyle = styleGet ? hostPositionStyle(styleGet(vals)) : void 0;
+      const wrapper = wrap ? {
+        key,
+        className: "sc-host-x",
+        "data-dc-tpl": tplId,
+        style: hostStyle || { display: "contents" }
+      } : null;
+      if (!C) {
+        const error = urlBindable ? "x-import `from` cannot contain {{ \u2026 }} \u2014 module URLs are resolved at parse time; use a literal URL" : host.resolveExternalError(url, name);
+        const ph = host.placeholder({
+          key: wrapper ? void 0 : key,
+          name,
+          hintSize,
+          error
+        });
+        return wrapper ? h("div", wrapper, ph) : ph;
+      }
+      const props = wrapper ? {} : { key };
+      let unresolvedHole = false;
+      for (const [k, g] of propGetters) {
+        if (k === "component" || k === "componentFromGlobalScope" || k === "from") {
+          continue;
+        }
+        const v = g(vals);
+        if (v === void 0) unresolvedHole = true;
+        if (k === "dcProps") {
+          if (v && typeof v === "object") Object.assign(props, v);
+          continue;
+        }
+        props[k] = v;
+      }
+      if (unresolvedHole && ctx?.__htmlStreamingNow) {
+        const ph = host.placeholder({
+          key: wrapper ? void 0 : key,
+          name,
+          hintSize,
+          error: null
+        });
+        return wrapper ? h("div", wrapper, ph) : ph;
+      }
+      if (kids.length) props.children = kids.map((b, j) => b(vals, ctx, j));
+      return wrapper ? h("div", wrapper, h(C, props)) : h(C, props);
+    };
+  }
+  function contentKey(el) {
+    const clone = el.cloneNode(true);
+    for (const d of clone.querySelectorAll("*")) {
+      while (d.attributes.length) d.removeAttribute(d.attributes[0].name);
+    }
+    const s = clone.innerHTML;
+    let h2 = 5381;
+    for (let i = 0; i < s.length; i++) h2 = (h2 << 5) + h2 + s.charCodeAt(i) | 0;
+    return s.length + "." + (h2 >>> 0).toString(36);
+  }
+  var NEVER_CONTENT_KEYED = new Set(
+    "script style textarea option title select canvas iframe video audio".split(
+      " "
+    )
+  );
+  var NOT_INLINE_SELECTOR = ":not(" + [...INLINE_TEXT_TAGS].join(",") + ")";
+  function walkElement(el, host) {
+    const realTag = RAW_UNWRAP[el.localName] || el.localName;
+    const tplId = el.getAttribute("data-dc-tpl");
+    const inlineOnly = el.childNodes.length > 0 && !NEVER_CONTENT_KEYED.has(realTag) && el.querySelector(NOT_INLINE_SELECTOR) === null;
+    const keySuffix = inlineOnly ? "|" + contentKey(el) : "";
+    const { propGetters, pseudoClasses } = collectProps(el, "dom", host);
+    const kids = walkChildren(el, host);
+    return (vals, ctx, key) => {
+      const props = {
+        key: key + keySuffix,
+        "data-dc-tpl": tplId
+      };
+      for (const [k, g] of propGetters) {
+        let v = g(vals);
+        if (k === "style" && typeof v === "string") v = cssToObj(v);
+        if ((k === "value" || k === "checked") && v === void 0) {
+          v = k === "checked" ? false : "";
+        }
+        props[k] = v;
+      }
+      if (pseudoClasses.length) {
+        props.className = [props.className, ...pseudoClasses].filter(Boolean).join(" ");
+      }
+      return h(realTag, props, ...kids.map((b, j) => b(vals, ctx, j)));
+    };
+  }
+
+  // src/logic.ts
+  var StreamableLogic = class {
+    constructor(props) {
+      __publicField(this, "props");
+      __publicField(this, "state", {});
+      /** Back-pointer to the wrapper component, installed after construction. */
+      __publicField(this, "__host");
+      this.props = props || {};
+    }
+    setState(update, cb) {
+      this.__host && this.__host.__setLogicState(update, cb);
+    }
+    forceUpdate() {
+      this.__host && this.__host.forceUpdate();
+    }
+    componentDidMount() {
+    }
+    componentDidUpdate(_prevProps) {
+    }
+    componentWillUnmount() {
+    }
+    /** The flat object the template renders against (merged over props). */
+    renderVals() {
+      return {};
+    }
+  };
+  function evalDcLogic(src) {
+    //! nosemgrep: eval-and-function-constructor
+    const fn = new Function(
+      "DCLogic",
+      "StreamableLogic",
+      "React",
+      src + '\n;return (typeof Component!=="undefined"&&Component)||undefined;'
+    );
+    return fn(StreamableLogic, StreamableLogic, getReact());
+  }
+
+  // src/component.ts
+  function shallowEqual(a, b) {
+    if (!b) return false;
+    const ak = Object.keys(a).filter((k) => k !== "children");
+    const bk = Object.keys(b).filter((k) => k !== "children");
+    if (ak.length !== bk.length) return false;
+    for (const k of ak) if (a[k] !== b[k]) return false;
+    return true;
+  }
+  function Placeholder({
+    name,
+    hintSize,
+    streaming,
+    error
+  }) {
+    const [w, hgt] = (hintSize || "100%,60px").split(",");
+    return h(
+      "div",
+      {
+        className: "sc-placeholder" + (streaming ? " sc-streaming" : ""),
+        style: { width: w.trim(), height: hgt && hgt.trim() },
+        title: name
+      },
+      error ? h(
+        "div",
+        { className: "sc-placeholder-error" },
+        (name ? name + ": " : "") + error
+      ) : null
+    );
+  }
+  function hintToMin(hint) {
+    if (!hint) return void 0;
+    const [w, hgt] = hint.split(",");
+    return { minWidth: w.trim(), minHeight: hgt && hgt.trim() };
+  }
+  function createComponentFactory(registry, ensureFetched) {
+    const React = getReact();
+    const AncestorContext = React.createContext([]);
+    class StreamableComponent extends React.Component {
+      constructor(props) {
+        super(props);
+        __publicField(this, "__name");
+        __publicField(this, "__sub");
+        __publicField(this, "__needsDidMount", false);
+        /** Snapshot of the registry's streaming flags taken at render time —
+         *  builders read it off the RenderCtx (this) to pick placeholder vs
+         *  render-nothing for unresolved values. */
+        __publicField(this, "__streamingNow", false);
+        __publicField(this, "__htmlStreamingNow", false);
+        /** When a construct throws, remember the (class, registry.ver, props)
+         *  triple so render-time reconcile doesn't re-attempt it on every parent
+         *  re-render. A registry bump (new class, template, external module
+         *  resolving via bumpAll) changes `ver` and breaks the memo so an
+         *  env-dependent constructor can self-heal. */
+        __publicField(this, "__failedLogic", null);
+        __publicField(this, "__failedUserProps", null);
+        __publicField(this, "__failedVer", -1);
+        /** Per-instance constructor error — kept here (not on the registry entry)
+         *  so one instance's successful construct can't hide a sibling's failure,
+         *  and a construct can never wipe an eval error `updateJs` recorded on
+         *  `r.logicError`. */
+        __publicField(this, "__ctorError", null);
+        __publicField(this, "logic");
+        this.__name = props.__name;
+        this.state = { __v: 0, __err: null };
+        this.__sub = () => {
+          if (this.state.__err) this.setState({ __err: null });
+          this.forceUpdate();
+        };
+        this.__makeLogic(registry.get(this.__name).Logic, null);
+        ensureFetched(this.__name);
+      }
+      /** Error-boundary hook: a render crash anywhere in this DC's subtree
+       *  (its own template, an x-import'd component, a child DC without its
+       *  own deeper boundary) lands here instead of unmounting the page. */
+      static getDerivedStateFromError(e) {
+        return { __err: e instanceof Error && e.message ? e.message : String(e) };
+      }
+      componentDidCatch(e, info) {
+        console.error(
+          "[dc-runtime] render error in <" + this.__name + ">:",
+          e,
+          info?.componentStack || ""
+        );
+      }
+      /** Instantiate the logic class (or the no-op base) and adopt `prevState`
+       *  over its initial state — used both at mount and on hot-swap. */
+      __makeLogic(Logic, prevState) {
+        const L = Logic || StreamableLogic;
+        try {
+          this.logic = new L(this.__userProps());
+          this.__failedLogic = null;
+          this.__failedUserProps = null;
+          this.__ctorError = null;
+        } catch (e) {
+          console.error(e);
+          this.__failedLogic = Logic;
+          this.__failedUserProps = this.__userProps();
+          this.__failedVer = registry.get(this.__name).ver;
+          this.__ctorError = this.__name + ": " + (e instanceof Error && e.message ? e.message : String(e));
+          this.logic = new StreamableLogic(
+            this.__userProps()
+          );
+        }
+        this.logic.__host = this;
+        if (prevState)
+          this.logic.state = { ...this.logic.state || {}, ...prevState };
+      }
+      /** The props the author's logic + template see — internal __-prefixed
+       *  wiring stripped. */
+      __userProps() {
+        const { __name, __hintSize, __tplId, __hostStyle, ...rest } = this.props;
+        return rest;
+      }
+      __setLogicState(update, cb) {
+        const prev = this.logic.state;
+        const patch = typeof update === "function" ? update(prev) : update;
+        this.logic.state = { ...prev, ...patch };
+        this.setState((s) => ({ __v: s.__v + 1 }), cb);
+      }
+      /** Swap the logic instance when the registry's Logic class changed
+       *  (streaming completion, hot reload). State carries over; didMount
+       *  re-fires after the swap commits so refs exist. */
+      __reconcileLogic() {
+        const r = registry.get(this.__name);
+        const Next = r.Logic;
+        const Cur = this.logic.constructor;
+        if (Next === Cur || !Next && Cur === StreamableLogic || Next === this.__failedLogic && r.ver === this.__failedVer && shallowEqual(this.__userProps(), this.__failedUserProps)) {
+          return;
+        }
+        if (!this.__needsDidMount) {
+          try {
+            this.logic.componentWillUnmount();
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        this.__makeLogic(Next, this.logic.state);
+        this.__needsDidMount = true;
+      }
+      componentDidMount() {
+        registry.get(this.__name).subs.add(this.__sub);
+        try {
+          this.logic.componentDidMount();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      componentDidUpdate(prevProps) {
+        this.logic.props = this.__userProps();
+        if (this.__needsDidMount) {
+          if (this.state.__err || !registry.get(this.__name).tpl) return;
+          this.__needsDidMount = false;
+          try {
+            this.logic.componentDidMount();
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          try {
+            this.logic.componentDidUpdate(prevProps);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+      componentWillUnmount() {
+        registry.get(this.__name).subs.delete(this.__sub);
+        if (!this.__needsDidMount) {
+          try {
+            this.logic.componentWillUnmount();
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+      render() {
+        const r = registry.get(this.__name);
+        const cls = "sc-host" + (r.htmlStreaming ? " sc-streaming-html" : "") + (r.jsStreaming ? " sc-streaming-js" : "");
+        const hintStyle = r.htmlStreaming ? hintToMin(this.props.__hintSize) : void 0;
+        const hostStyle = this.props.__hostStyle || hintStyle ? { ...hintStyle || {}, ...this.props.__hostStyle || {} } : void 0;
+        const hostBase = {
+          className: cls,
+          style: hostStyle,
+          "data-sc-name": this.__name,
+          "data-dc-tpl": this.props.__tplId
+        };
+        const chain = Array.isArray(this.context) ? this.context : [];
+        if (chain.includes(this.__name)) {
+          const cycle = [
+            ...chain.slice(chain.indexOf(this.__name)),
+            this.__name
+          ].join(" \u2192 ");
+          return h(
+            "div",
+            { ...hostBase, className: cls + " sc-has-error" },
+            h(Placeholder, {
+              name: this.__name,
+              hintSize: this.props.__hintSize,
+              error: "circular import: " + cycle
+            })
+          );
+        }
+        if (this.state.__err) {
+          return h(
+            "div",
+            { ...hostBase, className: cls + " sc-has-error" },
+            h(
+              "div",
+              { className: "sc-logic-error", "data-omelette-chrome": "" },
+              this.__name + ": " + this.state.__err
+            ),
+            h(Placeholder, {
+              name: this.__name,
+              hintSize: this.props.__hintSize,
+              error: this.state.__err
+            })
+          );
+        }
+        this.__reconcileLogic();
+        if (!r.tpl) {
+          return h(
+            "div",
+            hostBase,
+            h(Placeholder, { name: this.__name, hintSize: this.props.__hintSize })
+          );
+        }
+        const userProps = this.__userProps();
+        this.logic.props = userProps;
+        let vals = userProps;
+        let renderErr = r.logicError || this.__ctorError;
+        try {
+          vals = { ...userProps, ...this.logic.renderVals() || {} };
+        } catch (e) {
+          console.error(e);
+          renderErr = this.__name + ".renderVals(): " + (e instanceof Error && e.message ? e.message : String(e));
+        }
+        this.__streamingNow = !!(r.htmlStreaming || r.jsStreaming);
+        this.__htmlStreamingNow = !!r.htmlStreaming;
+        return h(
+          "div",
+          { ...hostBase, className: cls + (renderErr ? " sc-has-error" : "") },
+          renderErr && h(
+            "div",
+            { className: "sc-logic-error", "data-omelette-chrome": "" },
+            renderErr
+          ),
+          h(
+            AncestorContext.Provider,
+            { value: [...chain, this.__name] },
+            r.tpl(vals, this)
+          )
+        );
+      }
+    }
+    __publicField(StreamableComponent, "contextType", AncestorContext);
+    const named = /* @__PURE__ */ new Map();
+    function getDC(name) {
+      const hit = named.get(name);
+      if (hit) return hit;
+      function Dispatcher(p) {
+        const [, setTick] = React.useState(0);
+        React.useEffect(() => {
+          const sub = () => setTick((n) => n + 1);
+          registry.get(name).subs.add(sub);
+          return () => {
+            registry.get(name).subs.delete(sub);
+          };
+        }, []);
+        ensureFetched(name);
+        return h(StreamableComponent, { ...p, __name: name });
+      }
+      Dispatcher.displayName = name;
+      named.set(name, Dispatcher);
+      return Dispatcher;
+    }
+    return {
+      getDC,
+      StreamableComponent
+    };
+  }
+
+  // src/bundled.ts
+  function bundledBlob(url) {
+    const blobs = window.__resourceBlobs;
+    const b = blobs ? blobs[url.split("#")[0]] : void 0;
+    return b instanceof Blob ? b : null;
+  }
+
+  // src/cdn.ts
+  var REACT_URL = "https://unpkg.com/react@18.3.1/umd/react.production.min.js";
+  var REACT_SRI = "sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z";
+  var REACT_DOM_URL = "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js";
+  var REACT_DOM_SRI = "sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1";
+  var BABEL_URL = "https://unpkg.com/@babel/standalone@7.29.0/babel.min.js";
+  var BABEL_SRI = "sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y";
+  function cdnScriptFor(url, sri) {
+    const res = window.__resources;
+    const v = res ? res[url] : void 0;
+    return typeof v === "string" && v ? { src: v } : { src: url, integrity: sri };
+  }
+
+  // src/external.ts
+  var isCustomElementName = (n) => !n.includes(".") && n.includes("-");
+  function isRenderableType(g) {
+    if (typeof g === "function") return !isElementClass(g);
+    return typeof g === "object" && g !== null && typeof g.$$typeof === "symbol";
+  }
+  function resolveDottedPath(root, name) {
+    let cur = root;
+    for (const seg of name.split(".")) {
+      if (cur == null) return void 0;
+      cur = cur[seg];
+    }
+    return cur;
+  }
+  var GLOBAL_POLL_INTERVAL_MS = 50;
+  var GLOBAL_POLL_TIMEOUT_MS = 3e4;
+  function createExternalModules(onResolved) {
+    const cache = /* @__PURE__ */ new Map();
+    let babelLoading = null;
+    const reportedMissing = /* @__PURE__ */ new Map();
+    const polling = /* @__PURE__ */ new Set();
+    function ensureBabel() {
+      if (window.Babel) return Promise.resolve();
+      if (babelLoading) return babelLoading;
+      const babel = cdnScriptFor(BABEL_URL, BABEL_SRI);
+      babelLoading = new Promise((res, rej) => {
+        const s = document.createElement("script");
+        s.src = babel.src;
+        if (babel.integrity) {
+          s.integrity = babel.integrity;
+          s.crossOrigin = "anonymous";
+        }
+        s.onload = () => res();
+        s.onerror = rej;
+        document.head.appendChild(s);
+      });
+      return babelLoading;
+    }
+    const pending = /* @__PURE__ */ new Map();
+    function load(kind, url, after) {
+      const existing = pending.get(url);
+      if (existing) return existing;
+      cache.set(url, null);
+      console.info("[dc-runtime] x-import: loading", url, "(" + kind + ")");
+      const ready = Promise.all([
+        kind === "jsx" ? ensureBabel() : Promise.resolve(),
+        after ?? Promise.resolve()
+      ]);
+      const p = ready.then(() => {
+        const pre = bundledBlob(url);
+        if (pre) return pre.text();
+        return fetch(url).then((r) => {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.text();
+        });
+      }).then((src) => {
+        const code = kind === "jsx" ? window.Babel.transform(src, {
+          filename: url,
+          presets: ["react", "typescript"]
+        }).code : src;
+        const module = { exports: {} };
+        const before = new Set(Object.keys(window));
+        //! nosemgrep: eval-and-function-constructor
+        new Function("React", "module", "exports", "require", code)(
+          getReact(),
+          module,
+          module.exports,
+          () => ({})
+        );
+        const globals = {};
+        for (const k of Object.keys(window)) {
+          if (!before.has(k) && typeof window[k] === "function") {
+            globals[k] = window[k];
+          }
+        }
+        cache.set(url, { mod: module.exports, globals });
+        console.info(
+          "[dc-runtime] x-import: loaded",
+          url,
+          "\u2014 exports:",
+          Object.keys(module.exports),
+          "window globals:",
+          Object.keys(globals)
+        );
+        onResolved();
+      }).catch((e) => {
+        cache.set(url, {
+          mod: {},
+          globals: {},
+          error: "failed to load: " + (e instanceof Error && e.message ? e.message : String(e))
+        });
+        console.error(
+          "[dc-runtime] x-import: FAILED to load",
+          url,
+          "(" + kind + ")",
+          e
+        );
+        onResolved();
+      });
+      pending.set(url, p);
+      return p;
+    }
+    function resolve2(url, name) {
+      const entry = cache.get(url);
+      if (!entry) return null;
+      const { mod, globals } = entry;
+      const C = mod && mod[name] || globals && globals[name] || typeof window !== "undefined" && window[name] || mod && mod.default;
+      if (typeof C === "function") return C;
+      const key = url + "\0" + name;
+      if (!reportedMissing.has(key)) {
+        reportedMissing.set(
+          key,
+          entry.error || 'no export named "' + name + '" (has: ' + Object.keys(mod).join(", ") + ")"
+        );
+        console.error(
+          "[dc-runtime] x-import: module",
+          url,
+          "loaded but has no component named",
+          JSON.stringify(name),
+          "\u2014 available exports:",
+          Object.keys(mod),
+          "window globals:",
+          Object.keys(globals),
+          ". The module must `module.exports = {" + name + "}` or set `window." + name + "`."
+        );
+      }
+      return null;
+    }
+    function waitForGlobal(name) {
+      if (polling.has(name)) return;
+      polling.add(name);
+      const started = Date.now();
+      const isCE = isCustomElementName(name);
+      const tick = () => {
+        const found = isCE ? customElements.get(name) : isRenderableType(resolveDottedPath(window, name));
+        if (found) {
+          polling.delete(name);
+          onResolved();
+          return;
+        }
+        if (Date.now() - started >= GLOBAL_POLL_TIMEOUT_MS) {
+          console.warn(
+            "[dc-runtime] x-import: global",
+            JSON.stringify(name),
+            "never appeared on window after " + GLOBAL_POLL_TIMEOUT_MS + "ms"
+          );
+          return;
+        }
+        setTimeout(tick, GLOBAL_POLL_INTERVAL_MS);
+      };
+      setTimeout(tick, GLOBAL_POLL_INTERVAL_MS);
+    }
+    function resolveGlobal(url, name) {
+      const isCE = isCustomElementName(name);
+      if (!url) {
+        if (isCE) {
+          if (customElements.get(name)) return name;
+          waitForGlobal(name);
+          return null;
+        }
+        const g2 = resolveDottedPath(window, name);
+        if (isRenderableType(g2)) return g2;
+        waitForGlobal(name);
+        return null;
+      }
+      const entry = cache.get(url);
+      if (!entry) return null;
+      if (isCE && customElements.get(name)) return name;
+      const g = entry.globals[name] ?? resolveDottedPath(window, name);
+      if (isRenderableType(g)) return g;
+      if (name.includes(".")) return null;
+      const key = url + "\0global\0" + name;
+      if (!reportedMissing.has(key)) {
+        reportedMissing.set(key, null);
+        if (isCE && !customElements.get(name)) {
+          console.warn(
+            "[dc-runtime] x-import:",
+            url,
+            "loaded but no custom element",
+            JSON.stringify(name),
+            "is registered and window." + name + " is not a function \u2014 rendering <" + name + "> as an unknown element."
+          );
+        }
+      }
+      return name;
+    }
+    function getError(url, name) {
+      const entry = cache.get(url);
+      if (entry?.error) return entry.error;
+      return reportedMissing.get(url + "\0" + name) || null;
+    }
+    return { load, resolve: resolve2, resolveGlobal, getError };
+  }
+  function isElementClass(g) {
+    try {
+      return typeof g === "function" && typeof HTMLElement !== "undefined" && g.prototype instanceof HTMLElement;
+    } catch {
+      return false;
+    }
+  }
+
+  // src/atomics.ts
+  var ATOMIC_CSS = (
+    // layout
+    ".fx{display:flex}.col{display:flex;flex-direction:column}.grid{display:grid}.ac{align-items:center}.jc{justify-content:center}.jb{justify-content:space-between}.f1{flex:1}.noshrink{flex-shrink:0}.wrap{flex-wrap:wrap}.fw5{font-weight:500}.fw6{font-weight:600}.fw7{font-weight:700}.fw8{font-weight:800}.fs11{font-size:11px}.fs12{font-size:12px}.fs13{font-size:13px}.fs14{font-size:14px}.fs15{font-size:15px}.fs16{font-size:16px}.fs20{font-size:20px}.fs22{font-size:22px}.upper{text-transform:uppercase}.tc{text-align:center}.nowrap{white-space:nowrap}.gap8{gap:8px}.gap10{gap:10px}.gap12{gap:12px}.gap16{gap:16px}.gap24{gap:24px}.m0{margin:0}.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mb8{margin-bottom:8px}.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.posrel{position:relative}.posabs{position:absolute}.round{border-radius:50%}.ohide{overflow:hidden}.bbox{box-sizing:border-box}.pointer{cursor:pointer}.w100{width:100%}.b0{border:none}"
+  );
+
+  // src/helmet.ts
+  var DESIGN_DOC_MODE_RE = /<meta\b[^>]*\bname\s*=\s*["']design_doc_mode["'][^>]*\b(?:content|value)\s*=\s*["'](\w+)["']/i;
+  var CANVAS_BG_LIGHT = "#f0eee6";
+  var CANVAS_BG_DARK = "#2e2c26";
+  function createHelmetManager(doc, isStreaming) {
+    const mounted = /* @__PURE__ */ new Set();
+    const live = /* @__PURE__ */ new Map();
+    let designDocMode = null;
+    let canvasStyleEl = null;
+    let appTheme = "light";
+    try {
+      const ds = doc.documentElement.dataset.theme;
+      appTheme = ds === "dark" || ds === "light" ? ds : new URLSearchParams(doc.defaultView?.location.search ?? "").get(
+        "theme"
+      ) === "dark" ? "dark" : "light";
+    } catch {
+    }
+    function applyCanvasBg() {
+      if (!canvasStyleEl) return;
+      const bg = appTheme === "dark" ? CANVAS_BG_DARK : CANVAS_BG_LIGHT;
+      canvasStyleEl.textContent = `html,body{background:${bg}}#dc-root>.sc-host{position:relative}`;
+    }
+    function postDesignMode(mode) {
+      if (window.parent === window) return;
+      try {
+        window.parent.postMessage({ type: "__dc_design_mode", mode }, "*");
+      } catch {
+      }
+    }
+    function setDesignDocMode(mode) {
+      if (mode === designDocMode) return;
+      designDocMode = mode;
+      postDesignMode(mode);
+      if (mode === "canvas") {
+        doc.documentElement.setAttribute("data-dc-canvas", "");
+        canvasStyleEl = doc.createElement("style");
+        canvasStyleEl.setAttribute("data-dc-canvas", "");
+        applyCanvasBg();
+        doc.head.appendChild(canvasStyleEl);
+      } else {
+        doc.documentElement.removeAttribute("data-dc-canvas");
+        canvasStyleEl?.remove();
+        canvasStyleEl = null;
+      }
+    }
+    window.addEventListener("message", (e) => {
+      const type = e.data && e.data.type;
+      if (type === "__dc_theme") {
+        const t = e.data.theme;
+        if (t === "light" || t === "dark") {
+          appTheme = t;
+          applyCanvasBg();
+        }
+        return;
+      }
+      if (!designDocMode || type !== "__dc_probe") return;
+      postDesignMode(designDocMode);
+    });
+    function compile(node) {
+      const raw = [...node.children];
+      const helmetClosed = node.nextSibling != null || node.parentNode?.nextSibling != null;
+      if (node.hasAttribute("data-dc-atomics") && !mounted.has("__dc-atomics")) {
+        mounted.add("__dc-atomics");
+        const el = doc.createElement("style");
+        el.id = "__dc-atomics";
+        el.textContent = ATOMIC_CSS;
+        doc.head.appendChild(el);
+      }
+      return (_vals, ctx) => {
+        const name = ctx && ctx.__name || "";
+        const streaming = !!(name && isStreaming(name));
+        for (let i = 0; i < raw.length; i++) {
+          const child = raw[i];
+          const tag = child.tagName;
+          const mayBePartial = streaming && !helmetClosed && i === raw.length - 1;
+          if (tag === "SCRIPT") {
+            if (mayBePartial) continue;
+            const key = "SCRIPT|" + (child.getAttribute("src") || child.textContent || "");
+            if (mounted.has(key)) continue;
+            mounted.add(key);
+            const el = doc.createElement("script");
+            for (const { name: an, value } of [...child.attributes])
+              el.setAttribute(an, value);
+            if (child.textContent) el.textContent = child.textContent;
+            doc.head.appendChild(el);
+          } else if (tag === "LINK" || tag === "META") {
+            if (mayBePartial) continue;
+            const key = tag + "|" + (child.getAttribute("href") || child.getAttribute("src") || child.outerHTML);
+            if (mounted.has(key)) continue;
+            mounted.add(key);
+            if (tag === "LINK") {
+              const rel = (child.getAttribute("rel") || "").toLowerCase().split(/\s+/);
+              const href = (child.getAttribute("href") || "").trim();
+              const res = window.__resources;
+              const pre = res && rel.includes("stylesheet") && !rel.includes("alternate") ? res[href] : void 0;
+              const blob = typeof pre === "string" && pre ? bundledBlob(pre) : null;
+              if (blob) {
+                const el = doc.createElement("style");
+                if (child.hasAttribute("disabled")) {
+                  el.setAttribute("media", "not all");
+                } else if (child.getAttribute("media")) {
+                  el.setAttribute("media", child.getAttribute("media"));
+                }
+                if (child.getAttribute("title"))
+                  el.setAttribute("title", child.getAttribute("title"));
+                void blob.text().then((css) => {
+                  el.textContent = css;
+                });
+                doc.head.appendChild(el);
+                continue;
+              }
+            }
+            doc.head.appendChild(child.cloneNode(true));
+          } else {
+            const key = name + "|" + i;
+            let el = live.get(key);
+            if (!el || el.tagName !== tag) {
+              if (el) el.remove();
+              el = doc.createElement(tag.toLowerCase());
+              live.set(key, el);
+              doc.head.appendChild(el);
+            }
+            for (const { name: an, value } of [...child.attributes]) {
+              if (el.getAttribute(an) !== value) el.setAttribute(an, value);
+            }
+            if (el.textContent !== child.textContent)
+              el.textContent = child.textContent;
+          }
+        }
+        return null;
+      };
+    }
+    return { compile, setDesignDocMode };
+  }
+
+  // src/pseudo.ts
+  function createPseudoSheet(doc) {
+    let el = null;
+    const cache = /* @__PURE__ */ new Map();
+    let n = 0;
+    return (pseudo, css) => {
+      const k = pseudo + "|" + css;
+      const hit = cache.get(k);
+      if (hit) return hit;
+      if (!el) {
+        el = doc.createElement("style");
+        doc.head.appendChild(el);
+      }
+      const cls = "scp" + (n++).toString(36);
+      const sel = pseudo === "before" || pseudo === "after" ? "." + cls + "::" + pseudo : "." + cls + ":" + pseudo;
+      el.sheet.insertRule(sel + "{" + css + "}", el.sheet.cssRules.length);
+      cache.set(k, cls);
+      return cls;
+    };
+  }
+
+  // src/registry.ts
+  function createRegistry() {
+    const entries = /* @__PURE__ */ Object.create(null);
+    function get(name) {
+      return entries[name] || (entries[name] = {
+        html: "",
+        tpl: null,
+        Logic: null,
+        jsStreaming: false,
+        htmlStreaming: false,
+        ver: 0,
+        subs: /* @__PURE__ */ new Set(),
+        fetched: false
+      });
+    }
+    function bump(name) {
+      const r = get(name);
+      r.ver++;
+      for (const fn of r.subs) fn();
+    }
+    return {
+      entries,
+      get,
+      bump,
+      bumpAll() {
+        for (const n in entries) bump(n);
+      }
+    };
+  }
+
+  // src/runtime.ts
+  var COMPONENT_DIR = ".";
+  function createRuntime(doc = document) {
+    const registry = createRegistry();
+    const pseudoClass = createPseudoSheet(doc);
+    const helmet = createHelmetManager(
+      doc,
+      (name) => registry.get(name).htmlStreaming
+    );
+    const external = createExternalModules(() => registry.bumpAll());
+    const factory = createComponentFactory(registry, ensureFetched);
+    const host = {
+      component: (name) => factory.getDC(name),
+      placeholder: (props) => h(Placeholder, props),
+      helmet: (node) => helmet.compile(node),
+      loadExternal: (kind, url, after) => external.load(kind, url, after),
+      resolveExternal: (url, name) => external.resolve(url, name),
+      resolveExternalGlobal: (url, name) => external.resolveGlobal(url, name),
+      resolveExternalError: (url, name) => external.getError(url, name),
+      pseudoClass
+    };
+    function ensureFetched(name) {
+      const r = registry.get(name);
+      if (r.fetched) return;
+      r.fetched = true;
+      const url = COMPONENT_DIR + "/" + encodeURIComponent(name) + ".dc.html";
+      const res = window.__resources;
+      const pre = res ? res[url] : void 0;
+      const target = typeof pre === "string" && pre ? pre : url;
+      const blob = bundledBlob(target);
+      (blob ? blob.text() : fetch(target).then((res2) => {
+        if (!res2.ok) {
+          console.error(
+            '[dc-runtime] sibling fetch for "' + name + '" failed:',
+            url,
+            "returned",
+            res2.status,
+            "\u2014 the reference renders as an empty placeholder."
+          );
+          return "";
+        }
+        return res2.text();
+      })).then((t) => {
+        if (!t) return;
+        const parsed = parseDcText(t);
+        if (!parsed) {
+          console.error(
+            '[dc-runtime] sibling fetch for "' + name + '":',
+            url,
+            "has no <x-dc> block \u2014 not a Design Component."
+          );
+          return;
+        }
+        if (parsed.props) r.propsMeta = parsed.props;
+        if (parsed.preview) r.preview = parsed.preview;
+        if (parsed.template && !r.html) updateHtml(name, parsed.template);
+        if (parsed.js && !r.Logic) updateJs(name, parsed.js);
+      }).catch(
+        (e) => console.error(
+          '[dc-runtime] sibling fetch for "' + name + '" threw:',
+          url,
+          e
+        )
+      );
+    }
+    let rootName = null;
+    function updateHtml(name, html) {
+      const r = registry.get(name);
+      r.html = html;
+      if (name === rootName) {
+        const mode = DESIGN_DOC_MODE_RE.exec(html)?.[1] ?? null;
+        if (mode || !r.htmlStreaming) helmet.setDesignDocMode(mode);
+      }
+      try {
+        r.tpl = compileTemplate(html, host);
+      } catch (e) {
+        console.error("[dc-runtime] template compile FAILED for", name, e);
+      }
+      registry.bump(name);
+    }
+    function updateJs(name, src) {
+      const r = registry.get(name);
+      const seq = r.jsSeq = (r.jsSeq || 0) + 1;
+      try {
+        const Cls = evalDcLogic(src);
+        if (r.jsSeq !== seq) return;
+        if (typeof Cls !== "function") {
+          r.logicError = name + ".dc.html: <script data-dc-script> must define `class Component extends DCLogic`";
+        } else {
+          r.logicError = null;
+          r.Logic = Cls;
+        }
+      } catch (e) {
+        if (r.jsSeq !== seq) return;
+        console.error(
+          "[dc-runtime] logic class eval FAILED for",
+          name,
+          "\u2014 the template renders with props only.",
+          e
+        );
+        r.logicError = name + ": " + (e instanceof Error && e.message ? e.message : String(e));
+      }
+      registry.bump(name);
+    }
+    function setStreaming(name, kind, on) {
+      const r = registry.get(name);
+      if (kind === "html") r.htmlStreaming = !!on;
+      else r.jsStreaming = !!on;
+      let any = false;
+      for (const n in registry.entries) {
+        const e = registry.entries[n];
+        if (e && (e.htmlStreaming || e.jsStreaming)) {
+          any = true;
+          break;
+        }
+      }
+      doc.documentElement.classList.toggle("sc-dc-streaming", any);
+      registry.bump(name);
+    }
+    function dcUpdate(name, kind, content, streaming) {
+      if (streaming) registry.get(name).fetched = true;
+      if (kind === "html") {
+        setStreaming(name, "html", !!streaming);
+        updateHtml(name, content);
+      } else if (kind === "js") {
+        setStreaming(name, "js", !!streaming);
+        if (!streaming) updateJs(name, content);
+      } else if (kind === "props") {
+        const { props, preview } = parseDataProps(content);
+        const r = registry.get(name);
+        r.propsMeta = props ?? void 0;
+        r.preview = preview;
+        registry.bump(name);
+      }
+    }
+    function setProps(name, overrides) {
+      registry.get(name).propOverrides = overrides && typeof overrides === "object" ? { ...overrides } : null;
+      registry.bump(name);
+    }
+    function adoptParsed(name, parsed) {
+      if (!parsed) return;
+      const r = registry.get(name);
+      if (parsed.props) r.propsMeta = parsed.props;
+      if (parsed.preview) r.preview = parsed.preview;
+      if (parsed.template) updateHtml(name, parsed.template);
+      if (parsed.js) updateJs(name, parsed.js);
+    }
+    return {
+      registry,
+      getDC: factory.getDC,
+      updateHtml,
+      updateJs,
+      dcUpdate,
+      setProps,
+      adoptParsed,
+      setRootName: (name) => {
+        rootName = name;
+      },
+      markFetched: (name) => {
+        registry.get(name).fetched = true;
+      },
+      annotatedTemplate: (name) => {
+        const r = registry.get(name);
+        return r.tpl && r.tpl.__annotated || null;
+      },
+      templateSource: (name) => registry.get(name).html || null,
+      StreamableLogic
+    };
+  }
+
+  // src/stream-state.ts
+  function createStreamTracker(staleMs = 6e4, now = Date.now) {
+    const since = /* @__PURE__ */ new Map();
+    const liveOne = (n) => {
+      const t = since.get(n);
+      if (t === void 0) return false;
+      if (now() - t > staleMs) {
+        since.delete(n);
+        return false;
+      }
+      return true;
+    };
+    return {
+      push(name, streaming, viewportKey) {
+        if (viewportKey === "dc-model") return;
+        if (streaming) since.set(name, now());
+        else since.delete(name);
+      },
+      live(name) {
+        if (name !== void 0) return liveOne(name);
+        for (const n of [...since.keys()]) if (liveOne(n)) return true;
+        return false;
+      }
+    };
+  }
+
+  // src/index.ts
+  function hideRawTemplate() {
+    const s = document.createElement("style");
+    s.textContent = "x-dc{display:none!important}";
+    document.head.appendChild(s);
+  }
+  function loadScript(src, integrity) {
+    return new Promise((resolve2, reject) => {
+      //! nosemgrep: create-script-element
+      const s = document.createElement("script");
+      s.src = src;
+      if (integrity) {
+        s.integrity = integrity;
+        s.crossOrigin = "anonymous";
+      }
+      s.async = false;
+      s.onload = () => resolve2();
+      s.onerror = () => reject(new Error(`failed to load ${src}`));
+      document.head.appendChild(s);
+    });
+  }
+  function loadReactUmd() {
+    const w = window;
+    if (w.React && w.ReactDOM) return Promise.resolve();
+    const react = cdnScriptFor(REACT_URL, REACT_SRI);
+    const reactDom = cdnScriptFor(REACT_DOM_URL, REACT_DOM_SRI);
+    return Promise.all([
+      loadScript(react.src, react.integrity),
+      loadScript(reactDom.src, reactDom.integrity)
+    ]).then(() => void 0);
+  }
+  function init() {
+    const runtime = createRuntime(document);
+    let rootName = "Root";
+    const baseCss = document.createElement("style");
+    baseCss.textContent = BASE_CSS;
+    document.head.prepend(baseCss);
+    const notifyHost = () => {
+      if (window.parent === window) return;
+      const r = runtime.registry.entries[rootName];
+      try {
+        window.parent.postMessage(
+          {
+            type: "__dc_booted",
+            rootName,
+            propsMeta: r && r.propsMeta || null,
+            preview: r && r.preview || null
+          },
+          "*"
+        );
+      } catch {
+      }
+    };
+    const streams = createStreamTracker();
+    const api = {
+      __dcUpdate: (name, kind, content, streaming, viewportKey) => {
+        streams.push(name, streaming, viewportKey);
+        runtime.dcUpdate(name, kind, content, streaming);
+        if (name === rootName && !streaming && kind === "props") notifyHost();
+      },
+      __dcStreaming: (name) => streams.live(name),
+      __dcSetProps: (name, overrides) => runtime.setProps(name, overrides),
+      /** Name of the component currently mounted as the page root — DC tools
+       *  push their template-stream here when targeting "the open page". */
+      __dcRootName: () => rootName,
+      /** Editor bridge — the encoded, `data-dc-tpl`-annotated template source.
+       *  The host editor parses this into its own template DOM so it can map a
+       *  rendered node (carrying the same `data-dc-tpl`) back to the source
+       *  node that emitted it. Returns the encoded form (`sc-camel-*` attrs,
+       *  `<sc-raw-*>`/`<sc-helmet>` tags); the editor decodes on serialize. */
+      __dcAnnotatedTemplate: (name) => runtime.annotatedTemplate(name),
+      /** Editor bridge — the *original* (decoded) template source. */
+      __dcTemplateSource: (name) => runtime.templateSource(name),
+      __dcBoot: () => {
+        rootName = boot(runtime, document) ?? rootName;
+        notifyHost();
+      },
+      __dcRegistry: runtime.registry.entries,
+      getDC: (name) => runtime.getDC(name),
+      // `DCLogic` is the documented base class name; `StreamableLogic` is the
+      // implementation alias kept for any project that already references it.
+      DCLogic: runtime.StreamableLogic,
+      StreamableLogic: runtime.StreamableLogic
+    };
+    Object.assign(window, api);
+    window.__dcContentKeyed = true;
+    if (document.readyState !== "loading") api.__dcBoot();
+    else document.addEventListener("DOMContentLoaded", () => api.__dcBoot());
+  }
+  hideRawTemplate();
+  loadReactUmd().then(init).catch((err) => {
+    console.error("[dc] failed to load React or boot:", err);
+    throw err;
+  });
+})();
+
+</script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+@keyframes drawLine{from{stroke-dashoffset:1;}to{stroke-dashoffset:0;}}
+@keyframes popDot{from{opacity:0;transform:scale(.1);}to{opacity:1;transform:scale(1);}}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes sheen{from{background-position:-200% 0;}to{background-position:200% 0;}}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(127,150,180,.35);border-radius:5px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(127,150,180,.6);}
+input::placeholder,textarea::placeholder{color:var(--text3);opacity:1;}
+</style>
+<script src="data_dash.js"></script>
+</helmet>
+
+<div style="{{ shellStyle }}">
+<div style="max-width:1360px;margin:0 auto;padding:24px 24px 60px;">
+
+  <div data-screen-label="Cabeçalho" style="display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px;height:44px;border-radius:12px;background:var(--accentSoft);border:1px solid var(--accentBorder);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 14l4-4 3 3 5-6"></path></svg>
+      </div>
+      <div>
+        <h1 style="font-size:23px;font-weight:800;letter-spacing:-0.02em;margin:0 0 3px;color:var(--text);">Pesquisas de Qualidade</h1>
+        <p style="font-size:12.5px;color:var(--text2);margin:0;">Programa Educacional · inteligência de satisfação dos eventos</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:nowrap;flex-shrink:0;">
+      <div style="display:flex;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;flex-shrink:0;">
+        <button onclick="{{ goVisao }}" style="{{ visaoTab }}">Visão geral</button>
+        <button onclick="{{ goIntel }}" style="{{ intelTab }}">Inteligência</button>
+        <button onclick="{{ goAcervo }}" style="{{ acervoTab }}">Acervo</button>
+        <button onclick="{{ goComent }}" style="{{ comentTab }}">Comentários</button>
+      </div>
+      <button onclick="{{ themeToggle }}" title="Alternar tema" style="width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--border);color:var(--text2);border-radius:10px;cursor:pointer;transition:.2s;">
+        <sc-if value="{{ isDark }}" hint-placeholder-val="{{ true }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"></path></svg></sc-if>
+        <sc-if value="{{ isLight }}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg></sc-if>
+      </button>
+      <button onclick="{{ exportCSV }}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 14px;background:var(--panel);border:1px solid var(--border);color:var(--text2);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:.2s;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>
+        CSV
+      </button>
+    </div>
+  </div>
+
+  <div data-screen-label="Filtros" style="display:flex;gap:11px;flex-wrap:wrap;align-items:flex-end;margin-bottom:13px;">
+    <div style="display:flex;flex-direction:column;gap:5px;">
+      <label style="font-size:9.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;">Área</label>
+      <select value="{{ areaVal }}" onchange="{{ onArea }}" style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:9px;font-size:13px;font-family:inherit;cursor:pointer;min-width:190px;">
+        <option value="">Todas as áreas</option>
+        <sc-for list="{{ areas }}" as="a" hint-placeholder-count="0"><option value="{{ a }}">{{ a }}</option></sc-for>
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;">
+      <label style="font-size:9.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;">Modalidade</label>
+      <select value="{{ modVal }}" onchange="{{ onMod }}" style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:9px;font-size:13px;font-family:inherit;cursor:pointer;min-width:150px;">
+        <option value="">Todas</option>
+        <option value="Online">Online</option>
+        <option value="Presencial">Presencial</option>
+        <option value="Híbrido">Híbrido</option>
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;">
+      <label style="font-size:9.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;">Mês / Ano</label>
+      <select value="{{ mesVal }}" onchange="{{ onMes }}" style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:9px;font-size:13px;font-family:inherit;cursor:pointer;min-width:160px;">
+        <option value="">Todos os meses</option>
+        <sc-for list="{{ meses }}" as="m" hint-placeholder-count="0"><option value="{{ m.key }}">{{ m.label }}</option></sc-for>
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:200px;">
+      <label style="font-size:9.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;">Buscar curso</label>
+      <input value="{{ searchVal }}" oninput="{{ onSearch }}" placeholder="Digite o nome do curso…" style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:9px;font-size:13px;font-family:inherit;width:100%;">
+    </div>
+  </div>
+
+  <sc-if value="{{ hasActiveFilters }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;animation:fadeUp .3s ease both;">
+      <span style="font-size:11px;color:var(--text3);">Filtros ativos:</span>
+      <sc-for list="{{ activeChips }}" as="chip" hint-placeholder-count="0">
+        <button onclick="{{ chip.onRemove }}" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--accentSoft);border:1px solid var(--accentBorder);color:var(--text);border-radius:99px;font-size:12px;font-family:inherit;cursor:pointer;">{{ chip.label }} <span style="color:var(--text3);font-size:14px;line-height:1;">×</span></button>
+      </sc-for>
+      <button onclick="{{ clearFilters }}" style="font-size:12px;color:var(--text2);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit;">Limpar tudo</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ notLoaded }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:90px;color:var(--text3);">
+      <div style="width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;"></div>
+      <span style="font-size:13px;">Carregando dados…</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ loaded }}" hint-placeholder-val="{{ false }}">
+
+    <sc-if value="{{ isVisao }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Visão geral">
+
+      <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:stretch;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px 20px;margin-bottom:15px;box-shadow:var(--shadow);animation:fadeUp .5s ease both;">
+        <div style="display:flex;align-items:center;gap:16px;flex-shrink:0;">
+          <div style="position:relative;width:96px;height:96px;border-radius:50%;background:{{ gaugeRing }};display:flex;align-items:center;justify-content:center;">
+            <div style="position:absolute;inset:9px;border-radius:50%;background:var(--panel);"></div>
+            <div style="position:relative;text-align:center;">
+              <div style="font-size:27px;font-weight:800;line-height:1;color:{{ execNpsColor }};font-variant-numeric:tabular-nums;">{{ execNps }}</div>
+              <div style="font-size:8.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;">NPS pond.</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Leitura executiva</div>
+            <div style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;background:{{ execBandBg }};border:1px solid {{ execBandBorder }};margin-bottom:7px;">
+              <span style="width:7px;height:7px;border-radius:50%;background:{{ execNpsColor }};"></span>
+              <span style="font-size:11.5px;font-weight:700;color:{{ execNpsColor }};">{{ execBand }}</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--text2);">{{ execMetaTxt }}</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:280px;display:flex;flex-direction:column;justify-content:center;gap:11px;border-left:1px solid var(--border);padding-left:20px;">
+          <p style="margin:0;font-size:13.5px;line-height:1.55;color:var(--text);text-wrap:pretty;">{{ execNarr }}</p>
+          <div style="display:flex;gap:9px;flex-wrap:wrap;">
+            <sc-for list="{{ execPills }}" as="p" hint-placeholder-count="4">
+              <div style="background:var(--inset);border:1px solid var(--bsoft);border-radius:10px;padding:7px 11px;min-width:96px;">
+                <div style="font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:2px;">{{ p.k }}</div>
+                <div style="font-size:13px;font-weight:800;color:{{ p.c }};">{{ p.v }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:11px;margin-bottom:15px;">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="7">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:14px 15px;box-shadow:var(--shadow);animation:fadeUp .5s ease both;animation-delay:{{ k.dly }};">
+            <div style="font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;color:{{ k.color }};">{{ k.val }}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:5px;">{{ k.lbl }}</div>
+            <sc-if value="{{ k.sub }}" hint-placeholder-val="{{ false }}"><div style="font-size:9.5px;font-weight:700;margin-top:4px;color:{{ k.color }};text-transform:uppercase;letter-spacing:.04em;">{{ k.sub }}</div></sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:15px;">
+        <div style="flex:2;min-width:440px;background:var(--panel);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shadow);">
+          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);padding:11px 15px;">
+            <span style="font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Tendência mensal</span>
+            <span style="font-size:10.5px;color:var(--text3);">clique num mês para filtrar</span>
+          </div>
+          <div style="padding:14px 16px 8px;">
+            <div style="display:flex;gap:18px;margin-bottom:6px;font-size:11px;color:var(--text2);flex-wrap:wrap;">
+              <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:14px;height:3px;background:var(--accent);border-radius:2px;display:inline-block;"></span>NPS ponderado</span>
+              <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;background:var(--accentSoft);border:1px solid var(--accentBorder);border-radius:2px;display:inline-block;"></span>Avaliações</span>
+              <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:14px;height:0;border-top:2px dashed var(--warn);display:inline-block;"></span>Meta {{ metaVal }}</span>
+            </div>
+            {{ trendChart }}
+          </div>
+        </div>
+        <div style="flex:1;min-width:290px;background:var(--panel);border:1px solid var(--border);border-radius:15px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow);">
+          <div style="background:var(--panel2);padding:11px 15px;font-size:11.5px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:0.05em;">Requer atenção · {{ alertCount }}</div>
+          <div style="padding:10px;overflow-y:auto;max-height:318px;">
+            <sc-if value="{{ hasAlerts }}" hint-placeholder-val="{{ true }}">
+              <sc-for list="{{ alerts }}" as="al" hint-placeholder-count="3">
+                <button onclick="{{ al.onClick }}" style="display:block;text-align:left;width:100%;background:var(--inset);border:1px solid var(--bsoft);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;font-family:inherit;transition:.15s;">
+                  <div style="font-size:12.5px;font-weight:600;color:var(--text);line-height:1.3;margin-bottom:6px;">{{ al.curso }}</div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+                    <sc-for list="{{ al.flags }}" as="f" hint-placeholder-count="0">
+                      <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;border:1px solid var(--border);color:{{ f.c }};">{{ f.t }}</span>
+                    </sc-for>
+                  </div>
+                  <div style="font-size:11px;color:var(--text2);">NPS <strong style="color:{{ al.npsColor }};">{{ al.nps }}</strong> · {{ al.aval }} aval · {{ al.taxa }} resp.</div>
+                </button>
+              </sc-for>
+            </sc-if>
+            <sc-if value="{{ noAlerts }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:40px 12px;text-align:center;color:var(--text3);">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--good)" stroke-width="2"><path d="M20 6L9 17l-5-5"></path></svg>
+                <span style="font-size:12.5px;">Nenhum curso requer atenção no período.</span>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:15px;flex-wrap:wrap;">
+        <div style="flex:1.15;min-width:300px;background:var(--panel);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shadow);">
+          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);padding:11px 15px;">
+            <span style="font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">NPS por área</span>
+            <span style="font-size:10.5px;color:var(--text3);">clique para explorar</span>
+          </div>
+          <div style="padding:15px 16px 9px;">
+            <sc-for list="{{ areaStats }}" as="a" hint-placeholder-count="5">
+              <button onclick="{{ a.onClick }}" style="display:block;width:100%;text-align:left;background:none;border:none;padding:0;margin-bottom:13px;cursor:pointer;font-family:inherit;">
+                <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;gap:10px;">
+                  <span style="color:var(--text);">{{ a.area }}</span>
+                  <span style="font-weight:800;color:{{ a.color }};font-variant-numeric:tabular-nums;">{{ a.nps }}</span>
+                </div>
+                <div style="height:8px;background:var(--inset);border-radius:5px;overflow:hidden;">
+                  <div style="height:100%;border-radius:5px;width:{{ a.pct }};background:{{ a.color }};transition:width .7s cubic-bezier(.2,.8,.2,1);"></div>
+                </div>
+                <div style="font-size:10.5px;color:var(--text3);margin-top:3px;">{{ a.count }} eventos · {{ a.aval }} avaliações</div>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:1;min-width:250px;background:var(--panel);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shadow);">
+          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);padding:11px 15px;">
+            <span style="font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Por modalidade</span>
+            <span style="font-size:10.5px;color:var(--text3);">clique para filtrar</span>
+          </div>
+          <div style="padding:5px 16px 8px;">
+            <sc-for list="{{ modStats }}" as="m" hint-placeholder-count="3">
+              <button onclick="{{ m.onClick }}" style="display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--bsoft);padding:13px 0;cursor:pointer;font-family:inherit;">
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--text);">{{ m.mod }}</div>
+                  <div style="font-size:10.5px;color:var(--text3);">{{ m.count }} eventos · {{ m.aval }} aval.</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:21px;font-weight:800;color:{{ m.color }};font-variant-numeric:tabular-nums;">{{ m.nps }}</div>
+                  <div style="font-size:10px;font-weight:700;color:{{ m.color }};">{{ m.label }}</div>
+                </div>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:1.15;min-width:280px;background:var(--panel);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shadow);">
+          <div style="background:var(--panel2);padding:11px 15px;font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Top 5 cursos (NPS)</div>
+          <div style="padding:3px 16px 8px;">
+            <sc-for list="{{ topCourses }}" as="t" hint-placeholder-count="5">
+              <button onclick="{{ t.onClick }}" style="display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--bsoft);padding:11px 0;cursor:pointer;font-family:inherit;">
+                <span style="font-size:12px;font-weight:800;color:var(--accentInk);background:{{ t.rankBg }};width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ t.rank }}</span>
+                <span style="flex:1;font-size:12.5px;color:var(--text);line-height:1.3;">{{ t.curso }}</span>
+                <span style="font-size:15px;font-weight:800;color:{{ t.color }};font-variant-numeric:tabular-nums;">{{ t.nps }}</span>
+              </button>
+            </sc-for>
+            <sc-if value="{{ noTop }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:30px 8px;text-align:center;color:var(--text3);font-size:12px;">Sem cursos com amostra suficiente.</div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isIntel }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Inteligência">
+
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:15px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);padding:11px 15px;gap:10px;flex-wrap:wrap;">
+          <span style="display:inline-flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"></rect><path d="M12 4v4M9 2h6"></path><circle cx="9" cy="14" r="1.2"></circle><circle cx="15" cy="14" r="1.2"></circle><path d="M2 13v3M22 13v3"></path></svg>
+            Assistente de análise de pesquisas
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;color:{{ aiModeColor }};">
+            <span style="width:7px;height:7px;border-radius:50%;background:{{ aiModeColor }};{{ aiModePulse }}"></span>{{ aiMode }}
+          </span>
+        </div>
+        <div style="padding:14px 16px;">
+          <div ref="{{ chatScrollRef }}" style="max-height:270px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;padding-right:4px;">
+            <sc-if value="{{ chatEmpty }}" hint-placeholder-val="{{ true }}">
+              <div style="color:var(--text3);font-size:12.5px;line-height:1.6;padding:6px 2px;">Pergunte sobre os dados em linguagem natural — o assistente responde com base nos eventos filtrados atualmente. Experimente uma sugestão abaixo.</div>
+            </sc-if>
+            <sc-for list="{{ chat }}" as="msg" hint-placeholder-count="0">
+              <div style="{{ msg.wrap }}">
+                <div style="{{ msg.bubble }}">{{ msg.text }}</div>
+                <sc-if value="{{ msg.showMode }}" hint-placeholder-val="{{ false }}"><div style="font-size:9.5px;color:var(--text3);margin-top:3px;padding:0 3px;">{{ msg.mode }}</div></sc-if>
+              </div>
+            </sc-for>
+            <sc-if value="{{ chatBusy }}" hint-placeholder-val="{{ false }}">
+              <div style="align-self:flex-start;background:var(--inset);border:1px solid var(--bsoft);border-radius:12px 12px 12px 3px;padding:10px 14px;font-size:12px;color:var(--text3);animation:pulse 1.1s ease-in-out infinite;">analisando…</div>
+            </sc-if>
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px;">
+            <sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="4">
+              <button onclick="{{ s.onClick }}" style="font-size:11.5px;padding:6px 11px;background:var(--inset);border:1px solid var(--border);color:var(--text2);border-radius:99px;cursor:pointer;font-family:inherit;transition:.15s;">{{ s.q }}</button>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:9px;align-items:center;">
+            <input value="{{ chatInput }}" oninput="{{ onChatInput }}" onkeydown="{{ onChatKey }}" placeholder="Pergunte algo sobre os eventos…" style="flex:1;background:var(--inset);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:10px;font-size:13px;font-family:inherit;">
+            <button onclick="{{ sendChat }}" style="width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;background:var(--accent);color:var(--accentInk);border:none;border-radius:10px;cursor:pointer;flex-shrink:0;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path></svg>
+            </button>
+          </div>
+          <sc-if value="{{ aiAvailable }}" hint-placeholder-val="{{ false }}">
+            <label style="display:inline-flex;align-items:center;gap:7px;margin-top:10px;font-size:11px;color:var(--text2);cursor:pointer;">
+              <input type="checkbox" checked="{{ liveAI }}" onchange="{{ toggleLive }}" style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer;">
+              Usar IA ao vivo
+            </label>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:15px;flex-wrap:wrap;">
+        <div style="flex:1.25;min-width:380px;background:var(--panel);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shadow);">
+          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);padding:11px 15px;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Correlações</span>
+            <div style="display:flex;background:var(--inset);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px;">
+              <button onclick="{{ corrTaxa }}" style="{{ corrTaxaStyle }}">Taxa × NPS</button>
+              <button onclick="{{ corrTam }}" style="{{ corrTamStyle }}">Turma × NPS</button>
+            </div>
+          </div>
+          <div style="padding:13px 16px 10px;">
+            {{ corrChart }}
+            <div style="display:flex;align-items:center;gap:12px;margin-top:8px;padding:11px 13px;background:var(--inset);border:1px solid var(--bsoft);border-radius:11px;">
+              <div style="text-align:center;flex-shrink:0;">
+                <div style="font-size:22px;font-weight:800;color:{{ corrColor }};font-variant-numeric:tabular-nums;line-height:1;">{{ corrR }}</div>
+                <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-top:3px;">coef. r</div>
+              </div>
+              <p style="margin:0;font-size:12px;line-height:1.5;color:var(--text2);text-wrap:pretty;">{{ corrInterp }}</p>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:300px;background:var(--panel);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shadow);">
+          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);padding:11px 15px;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Benchmark</span>
+            <div style="display:flex;background:var(--inset);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px;">
+              <button onclick="{{ benchArea }}" style="{{ benchAreaStyle }}">Área</button>
+              <button onclick="{{ benchMod }}" style="{{ benchModStyle }}">Modalidade</button>
+              <button onclick="{{ benchMes }}" style="{{ benchMesStyle }}">Mês</button>
+            </div>
+          </div>
+          <div style="padding:14px 16px 9px;">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Média de referência: <strong style="color:var(--text);">{{ benchAvg }}</strong> · barra vermelha = meta {{ metaVal }}</div>
+            <sc-for list="{{ benchRows }}" as="b" hint-placeholder-count="5">
+              <div style="margin-bottom:13px;">
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;gap:8px;">
+                  <span style="color:var(--text);">{{ b.label }}</span>
+                  <span style="display:inline-flex;gap:7px;align-items:baseline;"><span style="font-weight:800;color:{{ b.color }};font-variant-numeric:tabular-nums;">{{ b.nps }}</span><span style="font-size:10.5px;font-weight:700;color:{{ b.deltaColor }};">{{ b.delta }}</span></span>
+                </div>
+                <div style="position:relative;height:9px;background:var(--inset);border-radius:5px;overflow:hidden;">
+                  <div style="height:100%;border-radius:5px;width:{{ b.pct }};background:{{ b.color }};transition:width .7s cubic-bezier(.2,.8,.2,1);"></div>
+                  <div style="position:absolute;top:-2px;bottom:-2px;left:{{ b.metaPct }};width:2px;background:var(--warn);"></div>
+                </div>
+                <div style="font-size:10px;color:var(--text3);margin-top:3px;">{{ b.count }} eventos · {{ b.aval }} avaliações</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isAcervo }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Acervo">
+
+      <sc-if value="{{ compareOn }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--panel);border:1px solid var(--accentBorder);border-radius:15px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:14px;animation:fadeUp .3s ease both;">
+          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);padding:11px 15px;">
+            <span style="font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Comparar cursos · {{ compareCount }}</span>
+            <button onclick="{{ compareClear }}" style="font-size:11.5px;color:var(--text2);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit;">Limpar</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;min-width:520px;">
+              <thead><tr>
+                <th style="text-align:left;padding:10px 14px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);">Métrica</th>
+                <sc-for list="{{ compareCols }}" as="c" hint-placeholder-count="2"><th style="text-align:left;padding:10px 14px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border);min-width:150px;vertical-align:top;">{{ c.curso }}<div style="font-size:10px;font-weight:500;color:var(--text3);margin-top:2px;">{{ c.meta }}</div></th></sc-for>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ compareRows }}" as="r" hint-placeholder-count="6">
+                  <tr>
+                    <td style="padding:9px 14px;font-size:11.5px;color:var(--text2);border-bottom:1px solid var(--bsoft);">{{ r.lbl }}</td>
+                    <sc-for list="{{ r.cells }}" as="cell" hint-placeholder-count="2"><td style="padding:9px 14px;font-size:13px;font-weight:700;color:{{ cell.color }};border-bottom:1px solid var(--bsoft);font-variant-numeric:tabular-nums;">{{ cell.v }} <sc-if value="{{ cell.best }}" hint-placeholder-val="{{ false }}"><span style="font-size:9px;color:var(--good);font-weight:700;">▲ melhor</span></sc-if></td></sc-for>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+        <div style="font-size:12px;color:var(--text2);"><strong style="color:var(--text);">{{ resultCount }}</strong> cursos · marque o ícone para comparar</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:11px;color:var(--text3);">Ordenar:</span>
+          <sc-for list="{{ sortBtns }}" as="s" hint-placeholder-count="6">
+            <button onclick="{{ s.onClick }}" style="{{ s.style }}">{{ s.label }} {{ s.arrow }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:15px;flex-wrap:wrap;align-items:flex-start;">
+        <div style="flex:1.3;min-width:340px;background:var(--panel);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shadow);">
+          <div style="background:var(--panel2);padding:11px 15px;font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Cursos</div>
+          <div style="max-height:600px;overflow-y:auto;">
+            <sc-if value="{{ hasCourses }}" hint-placeholder-val="{{ true }}">
+              <sc-for list="{{ courses }}" as="c" hint-placeholder-count="6">
+                <div style="display:flex;align-items:stretch;border-bottom:1px solid var(--bsoft);border-left:3px solid {{ c.selBorder }};background:{{ c.selBg }};transition:.15s;">
+                  <button onclick="{{ c.onCompare }}" title="Comparar" style="flex-shrink:0;width:38px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-right:1px solid var(--bsoft);cursor:pointer;color:{{ c.cmpColor }};">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="{{ c.cmpFill }}" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"></rect><sc-if value="{{ c.cmpOn }}" hint-placeholder-val="{{ false }}"><path d="M8 12l3 3 5-6" stroke="var(--accentInk)" fill="none"></path></sc-if></svg>
+                  </button>
+                  <button onclick="{{ c.onClick }}" style="flex:1;display:block;text-align:left;border:none;background:none;padding:12px 14px;cursor:pointer;font-family:inherit;">
+                    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                      <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.3;">{{ c.curso }}</div>
+                      <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-size:15px;font-weight:800;color:{{ c.npsColor }};font-variant-numeric:tabular-nums;">{{ c.nps }}</div>
+                        <div style="font-size:9px;font-weight:700;color:{{ c.npsColor }};text-transform:uppercase;letter-spacing:0.04em;">{{ c.npsLabel }}</div>
+                      </div>
+                    </div>
+                    <div style="font-size:11px;color:var(--text2);margin:4px 0 7px;">{{ c.date }}</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                      <span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--accentSoft);color:var(--accent);border:1px solid var(--accentBorder);">{{ c.area }}</span>
+                      <span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--inset);color:var(--text2);border:1px solid var(--border);">{{ c.mod }}</span>
+                      <span style="font-size:10.5px;color:var(--text2);">{{ c.aval }} aval · {{ c.taxa }} resp</span>
+                      <sc-if value="{{ c.small }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;padding:2px 7px;border-radius:99px;background:rgba(255,193,94,0.14);color:var(--warn);border:1px solid rgba(255,193,94,0.3);">amostra pequena</span></sc-if>
+                    </div>
+                  </button>
+                </div>
+              </sc-for>
+            </sc-if>
+            <sc-if value="{{ emptyState }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:44px;text-align:center;color:var(--text3);font-size:13px;">Nenhum curso encontrado com os filtros atuais.</div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:320px;background:var(--panel);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shadow);">
+          <div style="background:var(--panel2);padding:11px 15px;font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Detalhes</div>
+          <sc-if value="{{ hasDetail }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:16px;max-height:604px;overflow-y:auto;">
+              <div style="font-size:15.5px;font-weight:800;color:var(--accent);line-height:1.3;margin-bottom:5px;">{{ detailCurso }}</div>
+              <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">{{ detailMeta }}</div>
+              <sc-if value="{{ detailSmall }}" hint-placeholder-val="{{ false }}"><div style="display:inline-block;font-size:10.5px;padding:3px 9px;border-radius:99px;background:rgba(255,193,94,0.14);color:var(--warn);border:1px solid rgba(255,193,94,0.3);margin-bottom:12px;">amostra pequena — interpretar com cautela</div></sc-if>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 18px;">
+                <sc-for list="{{ detailKpis }}" as="dk" hint-placeholder-count="6">
+                  <div style="background:var(--inset);border:1px solid var(--bsoft);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:{{ dk.color }};">{{ dk.val }}</div>
+                    <div style="font-size:10px;color:var(--text2);margin-top:2px;">{{ dk.lbl }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{ detailHasPals }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Palestrantes · {{ detailPalCount }}</div>
+                <sc-for list="{{ detailPals }}" as="p" hint-placeholder-count="0">
+                  <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bsoft);">
+                    <div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;background:{{ p.avBg }};color:{{ p.avColor }};">{{ p.initials }}</div>
+                    <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:var(--text);">{{ p.nome }}</div><div style="font-size:11px;color:var(--text2);">{{ p.aval }} avaliações</div></div>
+                    <div style="text-align:right;"><div style="font-size:14px;font-weight:800;color:{{ p.color }};font-variant-numeric:tabular-nums;">{{ p.nps }}</div><div style="font-size:10px;color:var(--text2);">NPS</div></div>
+                  </div>
+                </sc-for>
+              </sc-if>
+              <sc-if value="{{ detailHasPreview }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;margin:16px 0 6px;">Comentários em destaque</div>
+                <sc-for list="{{ detailPreviews }}" as="cm" hint-placeholder-count="0">
+                  <div style="background:var(--inset);border:1px solid var(--bsoft);border-radius:11px;padding:11px 13px;margin-bottom:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;">
+                      <span style="font-size:11.5px;font-weight:700;color:var(--text);">{{ cm.nome }}</span>
+                      <sc-if value="{{ cm.hasNota }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:800;color:{{ cm.notaColor }};">{{ cm.nota }}</span></sc-if>
+                    </div>
+                    <p style="margin:0;font-size:12px;line-height:1.5;color:var(--text2);">{{ cm.texto }}</p>
+                  </div>
+                </sc-for>
+              </sc-if>
+              <sc-if value="{{ detailHasCom }}" hint-placeholder-val="{{ false }}">
+                <button onclick="{{ detailOpenCom }}" style="display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:10px 16px;background:var(--accentSoft);color:var(--accent);border:1px solid var(--accentBorder);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                  Ver {{ detailComCount }} comentários deste curso →
+                </button>
+              </sc-if>
+            </div>
+          </sc-if>
+          <sc-if value="{{ noDetail }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:360px;gap:12px;color:var(--text3);text-align:center;padding:20px;">
+              <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 15l5 5M9.5 17A7.5 7.5 0 1 1 9.5 2a7.5 7.5 0 0 1 0 15z"></path></svg>
+              <p style="font-size:13px;margin:0;line-height:1.5;">Selecione um curso na lista<br>para ver palestrantes e comentários</p>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isComentarios }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Comentários">
+
+      <sc-if value="{{ cmtHasCourses }}" hint-placeholder-val="{{ true }}">
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:15px;">
+          <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:300px;">
+            <label style="font-size:9.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;">Curso</label>
+            <select value="{{ cmtSelVal }}" onchange="{{ cmtOnSelect }}" style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:9px;font-size:13px;font-family:inherit;cursor:pointer;width:100%;">
+              <sc-for list="{{ cmtOptions }}" as="o" hint-placeholder-count="6"><option value="{{ o.idStr }}">{{ o.curso }}</option></sc-for>
+            </select>
+          </div>
+          <div style="display:flex;gap:7px;">
+            <button onclick="{{ cmtPrev }}" style="{{ cmtPrevStyle }}">← Anterior</button>
+            <button onclick="{{ cmtNext }}" style="{{ cmtNextStyle }}">Próximo →</button>
+          </div>
+        </div>
+
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:15px;padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow);animation:fadeUp .4s ease both;">
+          <div style="font-size:16.5px;font-weight:800;color:var(--accent);line-height:1.3;margin-bottom:5px;">{{ cmtCurso }}</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">{{ cmtMeta }}</div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;">
+            <span style="font-size:10.5px;padding:3px 9px;border-radius:99px;background:var(--accentSoft);color:var(--accent);border:1px solid var(--accentBorder);">{{ cmtArea }}</span>
+            <span style="font-size:10.5px;padding:3px 9px;border-radius:99px;background:var(--inset);color:var(--text2);border:1px solid var(--border);">{{ cmtMod }}</span>
+            <sc-if value="{{ cmtSmall }}" hint-placeholder-val="{{ false }}"><span style="font-size:10.5px;padding:3px 9px;border-radius:99px;background:rgba(255,193,94,0.14);color:var(--warn);border:1px solid rgba(255,193,94,0.3);">amostra pequena</span></sc-if>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:11px;margin-bottom:16px;">
+          <sc-for list="{{ cmtKpis }}" as="k" hint-placeholder-count="5">
+            <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:13px 15px;box-shadow:var(--shadow);">
+              <div style="font-size:24px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;color:{{ k.color }};">{{ k.val }}</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:5px;">{{ k.lbl }}</div>
+              <sc-if value="{{ k.sub }}" hint-placeholder-val="{{ false }}"><div style="font-size:9.5px;font-weight:700;margin-top:3px;color:{{ k.color }};text-transform:uppercase;letter-spacing:.04em;">{{ k.sub }}</div></sc-if>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+          <div style="display:inline-flex;align-items:center;gap:9px;font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            Comentários
+            <span style="background:var(--accentSoft);color:var(--accent);border:1px solid var(--accentBorder);font-size:11px;padding:2px 9px;border-radius:99px;">{{ cmtCount }}</span>
+          </div>
+          <input value="{{ cmtSearchVal }}" oninput="{{ cmtOnSearch }}" placeholder="Buscar nos comentários…" style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:9px;font-size:13px;font-family:inherit;min-width:240px;">
+        </div>
+
+        <sc-if value="{{ cmtHasComments }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ cmtComments }}" as="c" hint-placeholder-count="6">
+              <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;gap:13px;align-items:flex-start;box-shadow:var(--shadow);">
+                <span style="font-size:11px;font-weight:700;color:var(--text3);font-variant-numeric:tabular-nums;flex-shrink:0;padding-top:3px;min-width:20px;">{{ c.num }}</span>
+                <div style="flex:1;">
+                  <sc-if value="{{ c.hasHead }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;">
+                      <span style="font-size:11.5px;font-weight:700;color:var(--text);">{{ c.nome }}</span>
+                      <sc-if value="{{ c.hasNota }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px;font-weight:800;color:{{ c.notaColor }};">{{ c.nota }}</span></sc-if>
+                    </div>
+                  </sc-if>
+                  <p style="margin:0;color:var(--text);font-size:13.5px;line-height:1.7;text-wrap:pretty;">{{ c.text }}</p>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ cmtNoComments }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--panel);border:1px dashed var(--border);border-radius:14px;padding:50px 20px;text-align:center;color:var(--text3);font-size:13.5px;">{{ cmtEmptyMsg }}</div>
+        </sc-if>
+
+      </sc-if>
+      <sc-if value="{{ cmtNoCourses }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--panel);border:1px dashed var(--border);border-radius:14px;padding:60px 20px;text-align:center;color:var(--text3);font-size:13.5px;">Nenhum curso encontrado com os filtros atuais.</div>
+      </sc-if>
+
+    </div>
+    </sc-if>
+
+  </sc-if>
+
+  <sc-if value="{{ hasTip }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:{{ tipX }};top:{{ tipY }};pointer-events:none;z-index:9999;background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);border-radius:10px;padding:9px 11px;min-width:120px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:5px;">{{ tipTitle }}</div>
+      <sc-for list="{{ tipRows }}" as="r" hint-placeholder-count="0">
+        <div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;line-height:1.7;"><span style="color:var(--text2);">{{ r.k }}</span><span style="font-weight:700;color:{{ r.c }};">{{ r.v }}</span></div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360,&quot;height&quot;:900},&quot;metaNps&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:100,&quot;min&quot;:50,&quot;max&quot;:100,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Parâmetros&quot;,&quot;unit&quot;:&quot;pts&quot;},&quot;amostraMinima&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:20,&quot;min&quot;:5,&quot;max&quot;:50,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Parâmetros&quot;,&quot;unit&quot;:&quot;aval&quot;}}">
+class Component extends DCLogic {
+  state = { view:'visao', theme:'dark', area:'', mod:'', mes:'', search:'', sortKey:'data', sortDir:'desc', selectedId:null, compare:[], data:null, chat:[], chatInput:'', chatBusy:false, liveAI:false, aiAvailable:false, corrX:'taxa', benchMode:'area', cmtSel:null, cmtSearch:'', tip:null };
+  WEBHOOK = 'https://gibs-sindusfarma.app.n8n.cloud/webhook/pes-ai-chat';
+  AV = [{bg:'#0f3a2e',color:'#00e5c0'},{bg:'#1a1a4a',color:'#a7a7ff'},{bg:'#3a1a2e',color:'#ff80b0'},{bg:'#2a1f0a',color:'#ffc060'},{bg:'#0a2a3a',color:'#60c0ff'},{bg:'#1a2a0a',color:'#80d040'}];
+  disp=null; tgt=null; _sig=''; _raf=null;
+
+  componentDidMount(){
+    const ok=D=>D&&Array.isArray(D.eventos)&&D.eventos.length>0;
+    let n=0; const t=()=>{ const D=window.__DASH__; if(ok(D)){ this.setState({data:D}); return; } if(D){ this.setState({data:{eventos:[],palestrantes:[],comentarios:{}}}); return; } n++; if(n<80) setTimeout(t,60); else this.setState({data:{eventos:[],palestrantes:[],comentarios:{}}}); };
+    t();
+    const ai=!!(this.WEBHOOK || (window.claude && typeof window.claude.complete==='function'));
+    this.setState({aiAvailable:ai, liveAI:ai});
+  }
+  componentDidUpdate(){ const s=[this.state.area,this.state.mod,this.state.mes,this.state.search,!!this.state.data].join('|'); if(s!==this._sig){ this._sig=s; this.kickCounters(); } const cl=this.state.chat.length+(this.state.chatBusy?1:0); if(this._chatEl && cl!==this._chatLen){ this._chatLen=cl; this._chatEl.scrollTop=this._chatEl.scrollHeight+400; } }
+
+  pal(){
+    if(this.state.theme==='light') return { bgShell:'radial-gradient(1200px 620px at 82% -12%, #ffffff 0%, #eef3fa 46%, #e6edf7 100%)', panel:'#ffffff', panel2:'#f2f6fc', inset:'#f4f8fd', border:'#dbe4f0', bsoft:'#e9eff7', text:'#0e1c3d', text2:'#4a6685', text3:'#7d97b1', accent:'#0aa088', accentInk:'#ffffff', accentSoft:'rgba(10,160,136,0.10)', accentBorder:'rgba(10,160,136,0.32)', grid:'#e6edf5', good:'#0a9e86', info:'#2563eb', warn:'#b7791f', bad:'#dc2626', shadow:'0 6px 22px -14px rgba(16,40,80,0.24)' };
+    return { bgShell:'radial-gradient(1200px 620px at 80% -12%, #10224c 0%, #0b1836 46%, #091430 100%)', panel:'#0e1c3d', panel2:'#122a52', inset:'#0a1730', border:'#22406e', bsoft:'#18305a', text:'#f0f6ff', text2:'#9fc0db', text3:'#6f8fb2', accent:'#00e5c0', accentInk:'#052a24', accentSoft:'rgba(0,229,192,0.12)', accentBorder:'rgba(0,229,192,0.38)', grid:'#1c3257', good:'#2ee6c2', info:'#5aa9ff', warn:'#ffc15e', bad:'#ff6b6b', shadow:'0 8px 26px -16px rgba(0,0,0,0.7)' };
+  }
+  shellStyle(){ const P=this.pal(); const v={ '--panel':P.panel,'--panel2':P.panel2,'--inset':P.inset,'--border':P.border,'--bsoft':P.bsoft,'--text':P.text,'--text2':P.text2,'--text3':P.text3,'--accent':P.accent,'--accentInk':P.accentInk,'--accentSoft':P.accentSoft,'--accentBorder':P.accentBorder,'--grid':P.grid,'--good':P.good,'--info':P.info,'--warn':P.warn,'--bad':P.bad,'--shadow':P.shadow }; return Object.entries(v).map(([k,x])=>k+':'+x).join(';')+';min-height:100vh;background:'+P.bgShell+';color:var(--text);font-family:Manrope,system-ui,-apple-system,BlinkMacSystemFont,sans-serif;transition:background .45s ease,color .3s ease;'; }
+
+  get pMeta(){ return this.props.metaNps ?? 100; }
+  get pAmostra(){ return this.props.amostraMinima ?? 20; }
+
+  getComments(id){ const D=this.state.data; let a=(D&&D.comentarios)?D.comentarios[String(id)]:null; if(typeof a==='number') a=null; return Array.isArray(a)?a:[]; }
+  getCount(id){ const D=this.state.data; const raw=(D&&D.comentarios)?D.comentarios[String(id)]:null; if(typeof raw==='number') return raw; return this.getComments(id).length; }
+  openComments(id){ this.setState(s=>({ view:'coment', cmtSel:(id!=null?id:s.cmtSel), cmtSearch:'' })); }
+  cmtGo(delta){ const list=[...this.filtered()].sort((a,b)=>a.curso.localeCompare(b.curso)); let sel=this.state.cmtSel; if(!list.find(e=>e.id===sel)) sel=list.length?list[0].id:null; const i=list.findIndex(e=>e.id===sel); const ni=i+delta; if(ni<0||ni>=list.length) return; this.setState({cmtSel:list[ni].id,cmtSearch:''}); }
+
+  serialToDate(s){ return new Date((s-25569)*86400*1000); }
+  getMesAno(d){ if(d==null) return null; if(typeof d==='number'){ const dt=this.serialToDate(d); return dt.getUTCFullYear()+'-'+String(dt.getUTCMonth()+1).padStart(2,'0'); } const s=String(d); if(s.includes('-')){ const p=s.split('-'); return p[0]+'-'+p[1]; } if(s.includes('/')){ const p=s.split('/'); return p[2]+'-'+p[1]; } return null; }
+  fmtData(d){ if(d==null) return ''; if(typeof d==='number'){ const dt=this.serialToDate(d); return String(dt.getUTCDate()).padStart(2,'0')+'/'+String(dt.getUTCMonth()+1).padStart(2,'0')+'/'+dt.getUTCFullYear(); } return String(d); }
+  mesShort(k){ const M=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; const p=k.split('-'); return M[parseInt(p[1])-1]+'/'+p[0].slice(2); }
+  mesFull(k){ const M=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']; const p=k.split('-'); return M[parseInt(p[1])-1]+'/'+p[0]; }
+  npsColor(n){ const P=this.pal(); return n>=85?P.good:n>=70?P.info:n>=55?P.warn:P.bad; }
+  npsLabel(n){ return n>=85?'Excelente':n>=70?'Bom':n>=55?'Atenção':'Crítico'; }
+  initials(n){ return (n||'').split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase(); }
+  fmtPct(v){ return Math.round(v*100)+'%'; }
+  fmtInt(n){ return Math.round(n).toLocaleString('pt-BR'); }
+  wNps(list){ const a=list.reduce((s,e)=>s+e.aval,0); return a?Math.round(list.reduce((s,e)=>s+e.nps*e.aval,0)/a):0; }
+
+  filtered(){ const D=this.state.data; if(!D) return []; const q=this.state.search.trim().toLowerCase(); return D.eventos.filter(e=>{ if(this.state.area&&e.area!==this.state.area)return false; if(this.state.mod&&e.mod!==this.state.mod)return false; if(this.state.mes&&this.getMesAno(e.data)!==this.state.mes)return false; if(q&&!e.curso.toLowerCase().includes(q))return false; return true; }); }
+
+  statAreas(evs){ const m={}; evs.forEach(e=>{(m[e.area]=m[e.area]||[]).push(e);}); return Object.keys(m).map(a=>{const l=m[a];return{key:a,nps:this.wNps(l),count:l.length,aval:l.reduce((s,e)=>s+e.aval,0)};}).sort((x,y)=>y.nps-x.nps); }
+  statMods(evs){ return ['Online','Presencial','Híbrido'].map(mo=>{const l=evs.filter(e=>e.mod===mo);return{key:mo,nps:l.length?this.wNps(l):null,count:l.length,aval:l.reduce((s,e)=>s+e.aval,0)};}); }
+  statMonths(evs){ const bm={}; evs.forEach(e=>{const k=this.getMesAno(e.data); if(!k)return; (bm[k]=bm[k]||[]).push(e);}); return Object.keys(bm).sort().map(k=>({key:k,label:this.mesShort(k),full:this.mesFull(k),nps:this.wNps(bm[k]),aval:bm[k].reduce((s,e)=>s+e.aval,0),count:bm[k].length})); }
+  pearson(xs,ys){ const n=xs.length; if(n<3) return 0; const mx=xs.reduce((a,b)=>a+b,0)/n, my=ys.reduce((a,b)=>a+b,0)/n; let num=0,dx=0,dy=0; for(let i=0;i<n;i++){const a=xs[i]-mx,b=ys[i]-my; num+=a*b; dx+=a*a; dy+=b*b;} const d=Math.sqrt(dx*dy); return d?num/d:0; }
+
+  kickCounters(){ const evs=this.filtered(); const aval=evs.reduce((s,e)=>s+e.aval,0); const tgt={ eventos:evs.length, inscritos:evs.reduce((s,e)=>s+e.inscritos,0), confirmados:evs.reduce((s,e)=>s+e.confirmados,0), aval, taxa:evs.length?evs.reduce((s,e)=>s+e.taxa,0)/evs.length*100:0, nps:this.wNps(evs), nota:aval?evs.reduce((s,e)=>s+e.nota*e.aval,0)/aval:0 }; this.tgt=tgt; const from=this.disp?{...this.disp}:{eventos:0,inscritos:0,confirmados:0,aval:0,taxa:0,nps:0,nota:0}; this.disp={...from}; cancelAnimationFrame(this._raf); const t0=performance.now(),dur=680,ease=t=>1-Math.pow(1-t,3); const step=(now)=>{ const p=Math.min(1,(now-t0)/dur),e=ease(p); for(const k in tgt){ this.disp[k]=from[k]+(tgt[k]-from[k])*e; } this.forceUpdate(); if(p<1) this._raf=requestAnimationFrame(step); }; this._raf=requestAnimationFrame(step); }
+
+  set(patch){ this.setState(patch); }
+  toggleFilter(key,val){ this.setState(s=>({[key]: s[key]===val?'':val})); }
+  drillArea(a){ this.setState(s=>({area:s.area===a?'':a, view:'acervo', selectedId:null})); }
+  setSort(k){ this.setState(s=> s.sortKey===k?{sortDir:s.sortDir==='asc'?'desc':'asc'}:{sortKey:k,sortDir:k==='curso'?'asc':'desc'}); }
+  openCourse(id){ this.setState({view:'acervo',selectedId:id}); }
+  toggleCompare(id){ this.setState(s=>{ const has=s.compare.includes(id); if(has) return {compare:s.compare.filter(x=>x!==id)}; if(s.compare.length>=3) return {}; return {compare:[...s.compare,id]}; }); }
+  toggleTheme(){ this.setState(s=>({theme:s.theme==='dark'?'light':'dark'})); }
+  showTip(e,title,rows){ const x=Math.min(e.clientX+14,(window.innerWidth||1200)-180); const y=Math.max(10,e.clientY-8); this.setState({tip:{x,y,title,rows}}); }
+  hideTip(){ if(this.state.tip) this.setState({tip:null}); }
+
+  exportCSV(){ const evs=this.filtered(); const head=['ID','Curso','Área','Modalidade','Data','Inscritos','Confirmados','Avaliações','Taxa de resposta','NPS','Nota média']; const rows=[head]; evs.forEach(e=>rows.push([e.id,e.curso,e.area,e.mod,this.fmtData(e.data),e.inscritos,e.confirmados,e.aval,this.fmtPct(e.taxa),e.nps,e.nota.toFixed(2)])); const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\r\n'); const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='pesquisas_qualidade.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); }
+
+  buildTrend(trend,sig){ const h=React.createElement,P=this.pal(); if(!trend.length) return h('div',{key:'t0',style:{height:'214px',display:'flex',alignItems:'center',justifyContent:'center',color:P.text3,fontSize:'13px'}},'Sem dados no período selecionado'); const W=760,H=250,mL=40,mR=16,mT=24,mB=32,pw=W-mL-mR,ph=H-mT-mB,n=trend.length; const maxA=Math.max(1,...trend.map(t=>t.aval)); const X=i=>n===1?mL+pw/2:mL+pw*i/(n-1); const yN=v=>mT+ph*(1-v/100); const yA=v=>mT+ph*(1-v/maxA); const els=[]; [0,25,50,75,100].forEach(g=>{const y=yN(g); els.push(h('line',{key:'g'+g,x1:mL,x2:mL+pw,y1:y,y2:y,stroke:P.grid,strokeWidth:1})); els.push(h('text',{key:'gl'+g,x:mL-7,y:y+3,textAnchor:'end',fontSize:10,fill:P.text3},String(g)));}); const bw=Math.min(34,pw/n*0.5); trend.forEach((t,i)=>{const x=X(i),y=yA(t.aval),bh=(mT+ph)-y; els.push(h('rect',{key:'b'+i,x:x-bw/2,y,width:bw,height:Math.max(0,bh),rx:3,fill:P.accentSoft}));}); const my=yN(this.pMeta); els.push(h('line',{key:'meta',x1:mL,x2:mL+pw,y1:my,y2:my,stroke:P.warn,strokeWidth:1.5,strokeDasharray:'5 4',opacity:.85})); const pts=trend.map((t,i)=>X(i)+','+yN(t.nps)).join(' '); els.push(h('polyline',{key:'ln',points:pts,fill:'none',stroke:P.accent,strokeWidth:2.6,strokeLinejoin:'round',strokeLinecap:'round',pathLength:1,style:{strokeDasharray:1,strokeDashoffset:1,animation:'drawLine 1.05s ease forwards'}})); trend.forEach((t,i)=>{const x=X(i),y=yN(t.nps); els.push(h('circle',{key:'d'+i,cx:x,cy:y,r:4.6,fill:this.npsColor(t.nps),stroke:P.panel,strokeWidth:2,style:{opacity:0,animation:'popDot .3s ease forwards',animationDelay:(0.9+i*0.05)+'s'}})); els.push(h('text',{key:'nv'+i,x,y:y-11,textAnchor:'middle',fontSize:11,fontWeight:'700',fill:this.npsColor(t.nps),style:{opacity:0,animation:'popDot .3s ease forwards',animationDelay:(1+i*0.05)+'s'}},String(t.nps))); els.push(h('text',{key:'xl'+i,x,y:H-9,textAnchor:'middle',fontSize:11,fill:P.text2},t.label));}); trend.forEach((t,i)=>{const x=X(i); els.push(h('rect',{key:'hit'+i,x:x-pw/n/2,y:mT,width:pw/n,height:ph,fill:'transparent',style:{cursor:'pointer'},onMouseMove:(e)=>this.showTip(e,t.full,[{k:'NPS',v:String(t.nps),c:this.npsColor(t.nps)},{k:'Avaliações',v:this.fmtInt(t.aval),c:P.text},{k:'Eventos',v:String(t.count),c:P.text}]),onMouseLeave:()=>this.hideTip(),onClick:()=>this.toggleFilter('mes',t.key)}));}); return h('div',{key:'trend-'+sig},h('svg',{viewBox:'0 0 '+W+' '+H,width:'100%',height:'auto',style:{display:'block',maxHeight:'256px'}},els)); }
+
+  buildScatter(pts,xLabel,xMax,sig){ const h=React.createElement,P=this.pal(); if(pts.length<3) return h('div',{key:'s0',style:{height:'230px',display:'flex',alignItems:'center',justifyContent:'center',color:P.text3,fontSize:'13px'}},'Amostra insuficiente para correlação'); const W=560,H=250,mL=38,mR=14,mT=16,mB=34,pw=W-mL-mR,ph=H-mT-mB; const X=v=>mL+pw*(v/xMax); const Y=v=>mT+ph*(1-v/100); const els=[]; [0,25,50,75,100].forEach(g=>{const y=Y(g); els.push(h('line',{key:'g'+g,x1:mL,x2:mL+pw,y1:y,y2:y,stroke:P.grid,strokeWidth:1})); els.push(h('text',{key:'gl'+g,x:mL-6,y:y+3,textAnchor:'end',fontSize:9.5,fill:P.text3},String(g)));}); els.push(h('line',{key:'meta',x1:mL,x2:mL+pw,y1:Y(this.pMeta),y2:Y(this.pMeta),stroke:P.warn,strokeWidth:1.2,strokeDasharray:'5 4',opacity:.7})); const maxR=Math.max(...pts.map(p=>p.r)); pts.forEach((p,i)=>{const cx=X(p.xv),cy=Y(p.nps),rad=5+9*Math.sqrt(p.r/maxR); els.push(h('circle',{key:'p'+i,cx,cy,r:rad,fill:this.npsColor(p.nps),fillOpacity:.55,stroke:this.npsColor(p.nps),strokeWidth:1.4,style:{cursor:'pointer',opacity:0,animation:'popDot .4s ease forwards',animationDelay:(i*0.02)+'s'},onMouseMove:(e)=>this.showTip(e,p.label,[{k:xLabel,v:p.xd,c:P.text},{k:'NPS',v:String(p.nps),c:this.npsColor(p.nps)},{k:'Avaliações',v:this.fmtInt(p.r),c:P.text}]),onMouseLeave:()=>this.hideTip(),onClick:()=>this.openCourse(p.id)}));}); els.push(h('text',{key:'xlab',x:mL+pw/2,y:H-4,textAnchor:'middle',fontSize:10.5,fill:P.text2},xLabel)); return h('div',{key:'sc-'+sig},h('svg',{viewBox:'0 0 '+W+' '+H,width:'100%',height:'auto',style:{display:'block',maxHeight:'240px'}},els)); }
+
+  buildAIContext(evs){ const areas=this.statAreas(evs),mods=this.statMods(evs).filter(m=>m.nps!=null),months=this.statMonths(evs); const aval=evs.reduce((s,e)=>s+e.aval,0),npsW=this.wNps(evs),taxa=evs.length?Math.round(evs.reduce((s,e)=>s+e.taxa,0)/evs.length*100):0; const L=e=>e.curso+' | área:'+e.area+' | mod:'+e.mod+' | data:'+this.fmtData(e.data)+' | NPS:'+e.nps+' | nota:'+e.nota.toFixed(2)+' | aval:'+e.aval+' | taxa:'+this.fmtPct(e.taxa)+' | inscritos:'+e.inscritos+' | confirmados:'+e.confirmados; return 'Dashboard de satisfação — Programa Educacional (setor farmacêutico). Meta oficial de NPS = '+this.pMeta+' (NPS numa escala 0–100). Recorte atual: '+evs.length+' eventos, '+this.fmtInt(aval)+' avaliações, NPS ponderado '+npsW+', taxa média de resposta '+taxa+'%.\nÁreas (NPS): '+areas.map(a=>a.key+'='+a.nps).join(', ')+'.\nModalidades (NPS): '+mods.map(m=>m.key+'='+m.nps).join(', ')+'.\nMeses (NPS): '+months.map(m=>m.label+'='+m.nps).join(', ')+'.\nEventos:\n'+evs.map(L).join('\n'); }
+
+  answerLocal(q){ const evs=this.filtered(); const P=this.pal(); if(!evs.length) return 'Não há eventos no recorte atual. Ajuste os filtros e pergunte de novo.'; const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); const t=norm(q); const has=(...ws)=>ws.some(w=>t.includes(norm(w))); const npsW=this.wNps(evs),aval=evs.reduce((s,e)=>s+e.aval,0),taxa=Math.round(evs.reduce((s,e)=>s+e.taxa,0)/evs.length*100); const areas=this.statAreas(evs),mods=this.statMods(evs).filter(m=>m.nps!=null),months=this.statMonths(evs); const okA=evs.filter(e=>e.aval>=this.pAmostra); const rank=[...okA].sort((a,b)=>b.nps-a.nps);
+    if(has('correla','relacao','relação','influencia','impacta','depende')){ const f=evs.filter(e=>e.aval>0); const rt=this.pearson(f.map(e=>e.taxa),f.map(e=>e.nps)); const rs=this.pearson(f.map(e=>e.confirmados),f.map(e=>e.nps)); const str=v=>{const a=Math.abs(v);return a<0.2?'desprezível':a<0.4?'fraca':a<0.6?'moderada':a<0.8?'forte':'muito forte';}; return 'Correlações no recorte atual:\n• Taxa de resposta × NPS: r = '+rt.toFixed(2)+' ('+str(rt)+', '+(rt>=0?'positiva':'negativa')+').\n• Tamanho da turma × NPS: r = '+rs.toFixed(2)+' ('+str(rs)+', '+(rs>=0?'positiva':'negativa')+').\nLeitura: '+(Math.abs(rt)>Math.abs(rs)?'a taxa de resposta se relaciona mais com o NPS do que o tamanho da turma.':'o tamanho da turma se relaciona mais com o NPS do que a taxa de resposta.')+' Veja a aba Correlações para o gráfico.'; }
+    if(has('melhor area','melhores areas','area com maior','qual area','ranking de area','por area')){ const top=areas[0],bot=areas[areas.length-1]; return 'Por área (NPS ponderado): '+areas.map(a=>a.key+' '+a.nps).join(' · ')+'.\nDestaque: '+top.key+' ('+top.nps+', '+top.count+' eventos). Menor: '+bot.key+' ('+bot.nps+').'; }
+    if(has('modalidade','online','presencial','hibrido','híbrido')){ return 'Por modalidade (NPS ponderado): '+mods.map(m=>m.key+' '+m.nps+' ('+m.count+' ev., '+this.fmtInt(m.aval)+' aval.)').join(' · ')+'.'; }
+    if(has('melhor curso','melhores cursos','top curso','maior nps','curso com maior','ranking de curso')){ if(!rank.length) return 'Nenhum curso atinge a amostra mínima de '+this.pAmostra+' avaliações no recorte atual.'; return 'Top cursos (amostra ≥ '+this.pAmostra+'): '+rank.slice(0,5).map((e,i)=>(i+1)+'. '+e.curso+' — NPS '+e.nps).join('\n'); }
+    if(has('pior curso','menor nps','piores','curso com menor','atencao','atenção','risco','problema')){ const bad=[...evs].sort((a,b)=>a.nps-b.nps).slice(0,5); return 'Cursos que mais pedem atenção (menor NPS): '+bad.map((e,i)=>(i+1)+'. '+e.curso+' — NPS '+e.nps+(e.aval<this.pAmostra?' (amostra pequena)':'')).join('\n'); }
+    if(has('taxa de resposta','taxa','resposta','engajamento')){ const low=[...evs].sort((a,b)=>a.taxa-b.taxa).slice(0,3); return 'Taxa média de resposta no recorte: '+taxa+'%. Menores taxas: '+low.map(e=>e.curso+' ('+this.fmtPct(e.taxa)+')').join(', ')+'. Uma taxa baixa reduz a confiança no NPS do evento.'; }
+    if(has('meta','objetivo','atingiu','alcancou','alcançou','gap')){ const atingiram=evs.filter(e=>e.nps>=this.pMeta).length; const gap=this.pMeta-npsW; return 'Meta de NPS = '+this.pMeta+'. NPS ponderado atual = '+npsW+' ('+(gap>0?'faltam '+gap+' pts':'meta atingida')+'). '+atingiram+' de '+evs.length+' eventos atingiram ou superaram a meta.'; }
+    if(has('tendencia','tendência','evolucao','evolução','mes a mes','mês a mês','crescendo','caindo','melhorou','piorou')){ if(months.length<2) return 'Só há dados de um mês no recorte — sem tendência para comparar.'; const a=months[months.length-2],b=months[months.length-1],d=b.nps-a.nps; return 'Evolução mensal do NPS: '+months.map(m=>m.label+' '+m.nps).join(' → ')+'.\nDe '+a.full+' para '+b.full+': '+(d>=0?'+':'')+d+' pts ('+(d>0?'melhora':d<0?'queda':'estável')+').'; }
+    if(has('palestrante','instrutor','professor','quem avali')){ const D=this.state.data; if(!D||!D.palestrantes) return 'Sem dados de palestrantes.'; const ids=new Set(evs.map(e=>e.id)); const ps=D.palestrantes.filter(p=>ids.has(p.id_evento)&&p.aval>=Math.max(5,Math.round(this.pAmostra/2))).sort((a,b)=>b.nps-a.nps); if(!ps.length) return 'Nenhum palestrante com amostra suficiente no recorte.'; return 'Palestrantes mais bem avaliados (amostra relevante): '+ps.slice(0,5).map((p,i)=>(i+1)+'. '+p.nome+' — NPS '+p.nps+' ('+p.aval+' aval.)').join('\n'); }
+    if(has('amostra','confianca','confiança','confiavel','confiável','significa')){ const small=evs.filter(e=>e.aval<this.pAmostra); return small.length+' de '+evs.length+' eventos têm menos de '+this.pAmostra+' avaliações (amostra pequena — interpretar com cautela): '+small.slice(0,6).map(e=>e.curso).join(', ')+(small.length>6?'…':'.'); }
+    if(has('quantos','total','numero','número','soma','resumo','geral','como estamos','panorama','visao geral','visão geral')){ const insc=evs.reduce((s,e)=>s+e.inscritos,0),conf=evs.reduce((s,e)=>s+e.confirmados,0); const top=areas[0]; return 'Panorama do recorte: '+evs.length+' eventos, '+this.fmtInt(insc)+' inscritos, '+this.fmtInt(conf)+' confirmados, '+this.fmtInt(aval)+' avaliações. NPS ponderado '+npsW+' ('+this.npsLabel(npsW)+'), taxa média de resposta '+taxa+'%. Área destaque: '+top.key+' (NPS '+top.nps+').'; }
+    return 'Posso analisar NPS por área, modalidade, mês, ranking de cursos e palestrantes, correlações (taxa/tamanho × NPS), taxa de resposta, meta e tamanho de amostra. Reformule ou toque numa sugestão acima. Panorama rápido: '+evs.length+' eventos, NPS ponderado '+npsW+', taxa '+taxa+'%.'; }
+
+  async askWebhook(q, evs){ const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 60000); try{ const r=await fetch(this.WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},signal:ctrl.signal,body:JSON.stringify({ pergunta:q, contexto:this.buildAIContext(evs), filtros:{ area:this.state.area||null, modalidade:this.state.mod||null, mes:this.state.mes||null, busca:this.state.search.trim()||null }, historico:this.state.chat.slice(-8).map(m=>({role:m.role,text:m.text})) })}); clearTimeout(to); if(!r.ok) throw new Error('HTTP '+r.status); const raw=await r.text(); let out=raw; try{ const j=JSON.parse(raw); out=j.output||j.text||j.resposta||j.answer||j.message||j.reply||(typeof j==='string'?j:raw); }catch(e){} out=(out||'').toString().replace(/[#*`_]{1,}/g,'').replace(/\n{3,}/g,'\n\n').trim(); return out||'(sem resposta)'; } finally { clearTimeout(to); } }
+
+  async askAI(qraw){ const q=(qraw||'').trim(); if(!q||this.state.chatBusy) return; this.setState(s=>({chat:[...s.chat,{role:'user',text:q}],chatInput:'',chatBusy:true})); const evs=this.filtered(); if(this.state.liveAI && this.WEBHOOK){ try{ const ans=await this.askWebhook(q, evs); this.setState(s=>({chat:[...s.chat,{role:'assistant',text:ans,mode:'IA ao vivo'}],chatBusy:false})); return; }catch(err){ this.setState(s=>({chat:[...s.chat,{role:'assistant',text:this.answerLocal(q),mode:'Chat local'}],chatBusy:false})); return; } } if(this.state.liveAI && window.claude && typeof window.claude.complete==='function'){ try{ const sys='Você é um analista de dados sênior de um programa educacional do setor farmacêutico. Responda SEMPRE em português do Brasil, de forma objetiva e executiva (no máximo ~5 frases). Baseie-se ESTRITAMENTE nos dados fornecidos; se algo não estiver nos dados, diga que não há informação. NPS está numa escala 0–100 (quanto maior, melhor). Use números concretos. Escreva em texto corrido e limpo: NÃO use markdown, asteriscos, cerquilhas (#), títulos, negrito ou blocos de código.'; const ctx=this.buildAIContext(evs); const txt=await window.claude.complete({model:'claude-haiku-4-5',max_tokens:700,system:sys,messages:[{role:'user',content:ctx+'\n\nPergunta do usuário: '+q}]}); const clean=(txt||'').replace(/[#*`_]{1,}/g,'').replace(/\n{3,}/g,'\n\n').trim()||'(sem resposta)'; this.setState(s=>({chat:[...s.chat,{role:'assistant',text:clean,mode:'IA ao vivo'}],chatBusy:false})); return; }catch(err){ /* cai para o modo local */ } } const ans=this.answerLocal(q); setTimeout(()=>{ this.setState(s=>({chat:[...s.chat,{role:'assistant',text:ans,mode:'Análise local'}],chatBusy:false})); }, 260); }
+
+  chromeVals(evs){ const P=this.pal(); const loaded=!!this.state.data; const tabA='padding:7px 15px;border:none;border-radius:8px;background:var(--accent);color:var(--accentInk);font-weight:700;font-size:13px;font-family:inherit;cursor:pointer;transition:.2s;'; const tabI='padding:7px 15px;border:none;border-radius:8px;background:transparent;color:var(--text2);font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;transition:.2s;'; const D=this.state.data; const areas=D?[...new Set(D.eventos.map(e=>e.area))].sort():[]; const meses=D?[...new Set(D.eventos.map(e=>this.getMesAno(e.data)).filter(Boolean))].sort().map(k=>({key:k,label:this.mesFull(k)})):[]; const chips=[]; if(this.state.area)chips.push({label:'Área: '+this.state.area,onRemove:()=>this.setState({area:''})}); if(this.state.mod)chips.push({label:this.state.mod,onRemove:()=>this.setState({mod:''})}); if(this.state.mes)chips.push({label:this.mesFull(this.state.mes),onRemove:()=>this.setState({mes:''})}); if(this.state.search.trim())chips.push({label:'Busca: '+this.state.search.trim(),onRemove:()=>this.setState({search:''})}); const tip=this.state.tip; return { shellStyle:this.shellStyle(), loaded, notLoaded:!loaded, isVisao:this.state.view==='visao', isIntel:this.state.view==='intel', isAcervo:this.state.view==='acervo', isComentarios:this.state.view==='coment', visaoTab:this.state.view==='visao'?tabA:tabI, intelTab:this.state.view==='intel'?tabA:tabI, acervoTab:this.state.view==='acervo'?tabA:tabI, comentTab:this.state.view==='coment'?tabA:tabI, goVisao:()=>this.setState({view:'visao'}), goIntel:()=>this.setState({view:'intel'}), goAcervo:()=>this.setState({view:'acervo'}), goComent:()=>this.setState({view:'coment'}), exportCSV:()=>this.exportCSV(), themeToggle:()=>this.toggleTheme(), isDark:this.state.theme==='dark', isLight:this.state.theme==='light', areas, meses, areaVal:this.state.area, modVal:this.state.mod, mesVal:this.state.mes, searchVal:this.state.search, onArea:e=>this.setState({area:e.target.value}), onMod:e=>this.setState({mod:e.target.value}), onMes:e=>this.setState({mes:e.target.value}), onSearch:e=>this.setState({search:e.target.value}), activeChips:chips, hasActiveFilters:chips.length>0, clearFilters:()=>this.setState({area:'',mod:'',mes:'',search:''}), metaVal:this.pMeta, hasTip:!!tip, tipX:(tip?tip.x:0)+'px', tipY:(tip?tip.y:0)+'px', tipTitle:tip?tip.title:'', tipRows:tip?tip.rows:[] }; }
+
+  visaoVals(evs){ const P=this.pal(); const g=k=>this.disp?this.disp[k]:0; const tg=this.tgt||{}; const npsW=Math.round(tg.nps!=null?tg.nps:this.wNps(evs)); const areas=this.statAreas(evs); const months=this.statMonths(evs); const gap=this.pMeta-npsW; let mom=null; if(months.length>=2) mom=months[months.length-1].nps-months[months.length-2].nps; const attn=evs.filter(e=>e.nps<70).length; const best=areas[0],worst=areas[areas.length-1]; const bandBg=this.npsColor(npsW), execBandBg = this.state.theme==='light'?'rgba(0,0,0,0.03)':'rgba(255,255,255,0.04)'; const gaugeDeg=Math.round(npsW/100*360); const metaDeg=Math.round(this.pMeta/100*360); const gaugeRing='conic-gradient('+this.npsColor(npsW)+' '+gaugeDeg+'deg, var(--grid) '+gaugeDeg+'deg '+metaDeg+'deg, var(--bad) '+metaDeg+'deg '+metaDeg+'deg, var(--grid) '+metaDeg+'deg)'; const narr=(best&&worst)?(best.key+' lidera com NPS '+best.nps+', enquanto '+worst.key+' registra o menor índice ('+worst.nps+'). '+(mom!=null?('No último mês o NPS '+(mom>0?'subiu '+mom+' pts':mom<0?'caiu '+Math.abs(mom)+' pts':'ficou estável')+'.'):'')+' '+(attn?(attn+' evento(s) abaixo de 70 pedem acompanhamento.'):'Nenhum evento em faixa crítica.')):'Aguardando dados.'; const pills=[]; if(best) pills.push({k:'Melhor área',v:best.nps+' · '+best.key.split(' ')[0],c:this.npsColor(best.nps)}); if(worst&&areas.length>1) pills.push({k:'Menor NPS',v:worst.nps+' · '+worst.key.split(' ')[0],c:this.npsColor(worst.nps)}); if(mom!=null) pills.push({k:'vs mês anterior',v:(mom>0?'+':'')+mom+' pts',c:mom>=0?P.good:P.bad}); pills.push({k:'Em atenção',v:attn+' de '+evs.length,c:attn?P.warn:P.good});
+    const kpis=[ {val:this.fmtInt(g('eventos')),lbl:'Eventos',color:'var(--text)',sub:'',dly:'0s'}, {val:this.fmtInt(g('inscritos')),lbl:'Inscritos',color:'var(--text)',sub:'',dly:'.05s'}, {val:this.fmtInt(g('confirmados')),lbl:'Confirmados',color:'var(--text)',sub:'',dly:'.1s'}, {val:this.fmtInt(g('aval')),lbl:'Avaliações',color:'var(--text)',sub:'',dly:'.15s'}, {val:Math.round(g('taxa'))+'%',lbl:'Taxa de resposta',color:'var(--text)',sub:'',dly:'.2s'}, {val:this.fmtInt(g('nps')),lbl:'NPS ponderado',color:this.npsColor(npsW),sub:this.npsLabel(npsW),dly:'.25s'}, {val:(g('nota')||0).toFixed(1),lbl:'Nota média (0–10)',color:'var(--text)',sub:'',dly:'.3s'} ];
+    const trend=months; const alertsArr=evs.map(e=>{const flags=[]; if(e.taxa<0.20)flags.push({t:'Baixa resposta',c:P.warn}); if(e.aval<this.pAmostra)flags.push({t:'Amostra pequena',c:P.text2}); if(e.nps<this.pMeta-20)flags.push({t:'NPS abaixo da meta',c:P.bad}); return {e,flags};}).filter(x=>x.flags.length).sort((a,b)=>b.flags.length-a.flags.length||a.e.nps-b.e.nps).map(x=>({curso:x.e.curso,nps:x.e.nps,npsColor:this.npsColor(x.e.nps),aval:x.e.aval,taxa:this.fmtPct(x.e.taxa),flags:x.flags,onClick:()=>this.openCourse(x.e.id)}));
+    const maxAreaNps=Math.max(1,...areas.map(a=>a.nps)); const areaStats=areas.map(a=>({area:a.key,nps:a.nps,color:this.npsColor(a.nps),count:a.count,aval:this.fmtInt(a.aval),pct:Math.round(a.nps/100*100)+'%',onClick:()=>this.drillArea(a.key)}));
+    const modStats=this.statMods(evs).map(m=>({mod:m.key,nps:m.nps==null?'—':m.nps,color:m.nps==null?P.text3:this.npsColor(m.nps),count:m.count,aval:this.fmtInt(m.aval),label:m.nps==null?'sem dados':this.npsLabel(m.nps),onClick:()=>m.count?this.toggleFilter('mod',m.key):null}));
+    const topCourses=evs.filter(e=>e.aval>=this.pAmostra).sort((a,b)=>b.nps-a.nps).slice(0,5).map((e,i)=>({rank:i+1,curso:e.curso,nps:e.nps,color:this.npsColor(e.nps),rankBg:i===0?P.accent:(this.state.theme==='light'?'#c8d3e2':'#2b4a7a'),onClick:()=>this.openCourse(e.id)}));
+    return { execNps:npsW, execNpsColor:this.npsColor(npsW), execBand:this.npsLabel(npsW), execBandBg, execBandBorder:'var(--bsoft)', execMetaTxt:(gap>0?'Meta '+this.pMeta+' · faltam '+gap+' pts':'Meta '+this.pMeta+' atingida'), gaugeRing, execNarr:narr, execPills:pills, kpis, trendChart:this.buildTrend(trend,this._sig+this.state.theme), alerts:alertsArr, hasAlerts:alertsArr.length>0, noAlerts:alertsArr.length===0, alertCount:alertsArr.length, areaStats, modStats, topCourses, noTop:topCourses.length===0 }; }
+
+  intelVals(evs){ const P=this.pal(); const sig=this._sig+this.state.theme; const segA='padding:5px 11px;border-radius:6px;border:none;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;background:var(--accent);color:var(--accentInk);'; const segI='padding:5px 11px;border-radius:6px;border:none;font-size:11.5px;font-weight:600;font-family:inherit;cursor:pointer;background:transparent;color:var(--text2);';
+    const f=evs.filter(e=>e.aval>0); let pts,xLabel,xMax,r; if(this.state.corrX==='taxa'){ xLabel='Taxa de resposta (%)'; pts=f.map(e=>({xv:e.taxa*100,xd:this.fmtPct(e.taxa),nps:e.nps,r:e.aval,id:e.id,label:e.curso})); xMax=Math.max(10,...pts.map(p=>p.xv))*1.08; r=this.pearson(f.map(e=>e.taxa),f.map(e=>e.nps)); } else { xLabel='Confirmados (tamanho da turma)'; pts=f.map(e=>({xv:e.confirmados,xd:this.fmtInt(e.confirmados),nps:e.nps,r:e.aval,id:e.id,label:e.curso})); xMax=Math.max(10,...pts.map(p=>p.xv))*1.08; r=this.pearson(f.map(e=>e.confirmados),f.map(e=>e.nps)); }
+    const strength=(v=>{const a=Math.abs(v);return a<0.2?'desprezível':a<0.4?'fraca':a<0.6?'moderada':a<0.8?'forte':'muito forte';})(r); const dir=r>=0?'positiva':'negativa'; const rc=Math.abs(r)<0.2?P.text2:r>=0?P.good:P.bad; let interp; if(this.state.corrX==='taxa') interp='Relação '+strength+' e '+dir+' entre taxa de resposta e NPS (r = '+r.toFixed(2)+'). '+(r>0.2?'Eventos com mais respostas tendem a exibir NPS mais alto — priorize elevar a taxa de resposta para leituras mais confiáveis.':r<-0.2?'Eventos com mais respostas tendem a exibir NPS mais baixo.':'Praticamente não há relação linear entre as duas variáveis no recorte.'); else interp='Relação '+strength+' e '+dir+' entre tamanho da turma e NPS (r = '+r.toFixed(2)+'). '+(Math.abs(r)<0.2?'O tamanho da turma, sozinho, não explica a satisfação.':r>0?'Turmas maiores tendem a NPS um pouco mais alto.':'Turmas maiores tendem a NPS um pouco mais baixo.');
+    let rows,avg,title; const mk=(arr,keyName)=>{ const overall=this.wNps(evs); const max=Math.max(1,...arr.map(a=>a.nps||0)); return arr.map(a=>{ const d=(a.nps==null)?null:a.nps-overall; return { label:a.key||a.label||a.full, nps:a.nps==null?'—':a.nps, color:a.nps==null?P.text3:this.npsColor(a.nps), pct:(a.nps==null?0:Math.round(a.nps/100*100))+'%', metaPct:Math.round(this.pMeta/100*100)+'%', delta:d==null?'':((d>0?'+':'')+d), deltaColor:d==null?P.text3:(d>=0?P.good:P.bad), count:a.count, aval:this.fmtInt(a.aval), onClick:null }; }); };
+    if(this.state.benchMode==='area'){ const a=this.statAreas(evs); rows=mk(a); avg=this.wNps(evs); } else if(this.state.benchMode==='mod'){ const m=this.statMods(evs); rows=mk(m); avg=this.wNps(evs); } else { const mo=this.statMonths(evs).map(x=>({key:x.full,nps:x.nps,count:x.count,aval:x.aval})); rows=mk(mo); avg=this.wNps(evs); }
+    const chat=this.state.chat.map(m=>({ text:m.text, mode:m.mode||'', isUser:m.role==='user', showMode:m.role!=='user'&&!!m.mode, wrap:'display:flex;flex-direction:column;'+(m.role==='user'?'align-items:flex-end;':'align-items:flex-start;'), bubble:m.role==='user'?'background:var(--accent);color:var(--accentInk);border-radius:12px 12px 3px 12px;padding:10px 14px;font-size:12.5px;line-height:1.5;max-width:82%;white-space:pre-wrap;font-weight:600;':'background:var(--inset);border:1px solid var(--bsoft);color:var(--text);border-radius:12px 12px 12px 3px;padding:11px 14px;font-size:12.5px;line-height:1.55;max-width:88%;white-space:pre-wrap;' }));
+    const sugg=['Como estamos no geral?','Melhor e pior área?','Taxa de resposta influencia o NPS?','Qual a tendência mês a mês?','Cursos que pedem atenção','Estamos atingindo a meta?'].map(qq=>({q:qq,onClick:()=>this.askAI(qq)}));
+    const aiOn=this.state.liveAI&&this.state.aiAvailable;
+    return { chatScrollRef:(el)=>{ this._chatEl=el; }, aiMode:aiOn?'IA ao vivo':'Chat local', aiModeColor:aiOn?P.good:P.info, aiModePulse:aiOn?'animation:pulse 1.6s ease-in-out infinite;':'', aiAvailable:this.state.aiAvailable, liveAI:this.state.liveAI, toggleLive:()=>this.setState(s=>({liveAI:!s.liveAI})), suggestions:sugg, chat, chatEmpty:chat.length===0, chatBusy:this.state.chatBusy, chatInput:this.state.chatInput, onChatInput:e=>this.setState({chatInput:e.target.value}), onChatKey:e=>{ if(e.key==='Enter'){ e.preventDefault(); this.askAI(this.state.chatInput); } }, sendChat:()=>this.askAI(this.state.chatInput),
+      corrX:this.state.corrX, corrTaxa:()=>this.setState({corrX:'taxa'}), corrTam:()=>this.setState({corrX:'tamanho'}), corrTaxaStyle:this.state.corrX==='taxa'?segA:segI, corrTamStyle:this.state.corrX==='tamanho'?segA:segI, corrChart:this.buildScatter(pts,xLabel,xMax,sig+this.state.corrX), corrR:r.toFixed(2), corrColor:rc, corrInterp:interp,
+      benchMode:this.state.benchMode, benchArea:()=>this.setState({benchMode:'area'}), benchMod:()=>this.setState({benchMode:'mod'}), benchMes:()=>this.setState({benchMode:'mes'}), benchAreaStyle:this.state.benchMode==='area'?segA:segI, benchModStyle:this.state.benchMode==='mod'?segA:segI, benchMesStyle:this.state.benchMode==='mes'?segA:segI, benchRows:rows, benchAvg:avg }; }
+
+  acervoVals(evs){ const P=this.pal(); const D=this.state.data; const sortActive='padding:6px 11px;border-radius:8px;border:1px solid var(--accentBorder);background:var(--accentSoft);color:var(--accent);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;'; const sortIdle='padding:6px 11px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text2);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;'; const sortBtns=[['data','Data'],['nps','NPS'],['taxa','Taxa'],['aval','Avaliações'],['nota','Nota'],['curso','Curso']].map(p=>({label:p[1],arrow:this.state.sortKey===p[0]?(this.state.sortDir==='asc'?'↑':'↓'):'',style:this.state.sortKey===p[0]?sortActive:sortIdle,onClick:()=>this.setSort(p[0])}));
+    const sorters={data:(a,b)=>a.data-b.data,nps:(a,b)=>a.nps-b.nps,taxa:(a,b)=>a.taxa-b.taxa,aval:(a,b)=>a.aval-b.aval,nota:(a,b)=>a.nota-b.nota,curso:(a,b)=>a.curso.localeCompare(b.curso)}; const dir=this.state.sortDir==='asc'?1:-1; const sorted=[...evs].sort((a,b)=>dir*sorters[this.state.sortKey](a,b));
+    const cmp=this.state.compare; const courses=sorted.map(e=>{ const on=cmp.includes(e.id); return { curso:e.curso, date:this.fmtData(e.data), area:e.area, mod:e.mod, aval:e.aval, taxa:this.fmtPct(e.taxa), nps:e.nps, npsColor:this.npsColor(e.nps), npsLabel:this.npsLabel(e.nps), small:e.aval<this.pAmostra, selBorder:e.id===this.state.selectedId?'var(--accent)':'transparent', selBg:e.id===this.state.selectedId?'var(--accentSoft)':'transparent', cmpOn:on, cmpColor:on?'var(--accent)':'var(--text3)', cmpFill:on?'var(--accent)':'transparent', onCompare:()=>this.toggleCompare(e.id), onClick:()=>this.setState({selectedId:e.id}) }; });
+    const sel=evs.find(e=>e.id===this.state.selectedId); let detail={hasDetail:false,noDetail:true};
+    if(sel&&D){ const pals=D.palestrantes.filter(p=>p.id_evento===sel.id); const comCount=this.getCount(sel.id); const rawPrev=this.getComments(sel.id); const previews=(Array.isArray(rawPrev)?rawPrev:[]).slice(0,3).map((c,i)=>{ const obj=typeof c==='string'?{texto:c}:c; const nota=obj.nota; return { nome:obj.nome||'Participante', texto:obj.texto||'', hasNota:nota!=null, nota:nota!=null?Number(nota).toFixed(nota%1?1:0):'', notaColor:nota!=null?this.npsColor(Number(nota)*10):P.text2 }; }).filter(c=>c.texto);
+      detail={ hasDetail:true, noDetail:false, detailCurso:sel.curso, detailMeta:this.fmtData(sel.data)+' · '+sel.area+' · '+sel.mod, detailSmall:sel.aval<this.pAmostra, detailKpis:[{val:this.fmtInt(sel.inscritos),lbl:'Inscritos',color:'var(--text)'},{val:this.fmtInt(sel.confirmados),lbl:'Confirmados',color:'var(--text)'},{val:this.fmtInt(sel.aval),lbl:'Avaliações',color:'var(--text)'},{val:String(sel.nps),lbl:'NPS',color:this.npsColor(sel.nps)},{val:this.fmtPct(sel.taxa),lbl:'Taxa resp.',color:'var(--text)'},{val:sel.nota.toFixed(1),lbl:'Nota média',color:'var(--text)'}], detailHasPals:pals.length>0, detailPalCount:pals.length, detailPals:pals.map((p,i)=>({nome:p.nome,initials:this.initials(p.nome),aval:p.aval,nps:p.nps,color:this.npsColor(p.nps),avBg:this.AV[i%this.AV.length].bg,avColor:this.AV[i%this.AV.length].color})), detailHasPreview:previews.length>0, detailPreviews:previews, detailComCount:comCount, detailHasCom:comCount>0, detailOpenCom:()=>this.openComments(sel.id) }; }
+    const cmpEvs=cmp.map(id=>evs.find(e=>e.id===id)||(D&&D.eventos.find(e=>e.id===id))).filter(Boolean); const compareOn=cmpEvs.length>=2; let compareCols=[],compareRows=[]; if(compareOn){ compareCols=cmpEvs.map(e=>({curso:e.curso,meta:e.area+' · '+e.mod})); const rowsDef=[['NPS',e=>e.nps,'high',e=>this.npsColor(e.nps)],['Nota média',e=>e.nota,'high',()=>'var(--text)'],['Taxa resp.',e=>e.taxa,'high',()=>'var(--text)'],['Avaliações',e=>e.aval,'high',()=>'var(--text)'],['Confirmados',e=>e.confirmados,'high',()=>'var(--text)'],['Inscritos',e=>e.inscritos,'high',()=>'var(--text)']]; compareRows=rowsDef.map(([lbl,fn,,colFn])=>{ const vals=cmpEvs.map(fn); const bestV=Math.max(...vals); const cells=cmpEvs.map((e,i)=>{ const raw=fn(e); let v; if(lbl==='Taxa resp.') v=this.fmtPct(raw); else if(lbl==='Nota média') v=raw.toFixed(1); else if(lbl==='NPS') v=String(raw); else v=this.fmtInt(raw); return { v, color:colFn(e), best:raw===bestV&&cmpEvs.length>1 }; }); return { lbl, cells }; }); }
+    return { resultCount:evs.length, sortBtns, courses, hasCourses:courses.length>0, emptyState:courses.length===0, compareOn, compareCount:cmp.length, compareClear:()=>this.setState({compare:[]}), compareCols, compareRows, ...detail }; }
+
+  comentVals(evs){ const P=this.pal(); const list=[...evs].sort((a,b)=>a.curso.localeCompare(b.curso)); const cmtOptions=list.map(e=>({idStr:String(e.id),curso:e.curso}));
+    let selId=this.state.cmtSel; if(!list.find(e=>e.id===selId)) selId=list.length?list[0].id:null;
+    const ev=list.find(e=>e.id===selId)||null;
+    const raw=ev?this.getComments(ev.id):[]; const items=raw.map(c=>typeof c==='string'?{texto:c}:(c||{}));
+    const q=(this.state.cmtSearch||'').trim().toLowerCase(); const norm=s=>String(s||'').toLowerCase();
+    const filtered=q?items.filter(c=>norm(c.texto).includes(q)||norm(c.nome).includes(q)):items;
+    const cmtComments=filtered.map((c,i)=>{ const nota=c.nota; const hasNome=!!(c.nome&&String(c.nome).trim()); const hasNota=nota!=null&&nota!==''; return { num:String(i+1), text:c.texto||'', nome:c.nome||'', hasHead:hasNome||hasNota, hasNota, nota:hasNota?Number(nota).toFixed(Number(nota)%1?1:0):'', notaColor:hasNota?this.npsColor(Number(nota)*10):P.text2 }; });
+    const idx=list.findIndex(e=>e.id===selId); const hasPrev=idx>0, hasNext=idx>=0&&idx<list.length-1;
+    const navOn='padding:10px 14px;border-radius:9px;border:1px solid var(--border);background:var(--panel);color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;'; const navOff='padding:10px 14px;border-radius:9px;border:1px solid var(--bsoft);background:var(--inset);color:var(--text3);font-size:13px;font-weight:600;font-family:inherit;cursor:default;';
+    let cmtKpis=[]; let header={cmtCurso:'',cmtMeta:'',cmtArea:'',cmtMod:'',cmtSmall:false};
+    if(ev){ const cnt=this.getCount(ev.id); cmtKpis=[ {val:this.fmtInt(cnt),lbl:'Comentários',color:P.accent,sub:''}, {val:this.fmtInt(ev.aval),lbl:'Avaliações',color:'var(--text)',sub:''}, {val:String(ev.nps),lbl:'NPS',color:this.npsColor(ev.nps),sub:this.npsLabel(ev.nps)}, {val:ev.nota.toFixed(1),lbl:'Nota média',color:'var(--text)',sub:''}, {val:this.fmtPct(ev.taxa),lbl:'Taxa de resposta',color:'var(--text)',sub:''} ]; header={ cmtCurso:ev.curso, cmtMeta:this.fmtData(ev.data)+' · '+this.fmtInt(ev.inscritos)+' inscritos · '+this.fmtInt(ev.confirmados)+' confirmados', cmtArea:ev.area, cmtMod:ev.mod, cmtSmall:ev.aval<this.pAmostra }; }
+    return { cmtHasCourses:list.length>0, cmtNoCourses:list.length===0, cmtOptions, cmtSelVal:String(selId), cmtOnSelect:e=>this.setState({cmtSel:parseInt(e.target.value),cmtSearch:''}), cmtPrev:()=>this.cmtGo(-1), cmtNext:()=>this.cmtGo(1), cmtPrevStyle:hasPrev?navOn:navOff, cmtNextStyle:hasNext?navOn:navOff, cmtKpis, ...header, cmtCount:cmtComments.length, cmtSearchVal:this.state.cmtSearch, cmtOnSearch:e=>this.setState({cmtSearch:e.target.value}), cmtComments, cmtHasComments:cmtComments.length>0, cmtNoComments:!!ev&&cmtComments.length===0, cmtEmptyMsg:q?'Nenhum comentário corresponde à busca.':'Nenhum comentário registrado para este curso.' }; }
+
+  renderVals(){ if(!this.state.data){ return { ...this.chromeVals([]) }; } const evs=this.filtered(); return { ...this.chromeVals(evs), ...this.visaoVals(evs), ...this.intelVals(evs), ...this.acervoVals(evs), ...this.comentVals(evs) }; }
+}
+</script>
+</body>
+</html>
